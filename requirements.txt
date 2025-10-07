@@ -9,4 +9,4 @@ sentence-transformers==2.2.2
 python-dotenv==1.0.0
 aiofiles==23.2.1
 pydantic==2.5.0
-requests==2.31.0
+requests==2.32.4
