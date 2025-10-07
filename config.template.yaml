@@ -1,0 +1,20 @@
+# Configuration template
+# Copy this to config.yaml and fill in your values
+
+openai:
+  api_key: "your-openai-api-key-here"
+  model: "gpt-3.5-turbo"
+  embedding_model: "text-embedding-ada-002"
+
+vectorstore:
+  type: "chroma"
+  persist_directory: "./chroma_db"
+  collection_name: "documents"
+
+retriever:
+  search_type: "similarity"
+  k: 3  # Number of documents to retrieve
+
+chatbot:
+  temperature: 0.7
+  max_tokens: 500

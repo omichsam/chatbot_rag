@@ -1,0 +1,34 @@
+Welcome to the RAG Chatbot System
+
+This is a sample document to demonstrate the RAG (Retrieval-Augmented Generation) chatbot system.
+
+What is RAG?
+RAG stands for Retrieval-Augmented Generation. It is a technique that combines information retrieval 
+with text generation to create more accurate and contextual AI responses.
+
+How does it work?
+1. Documents are processed and split into smaller chunks
+2. These chunks are converted into vector embeddings
+3. When a user asks a question, relevant chunks are retrieved
+4. The language model uses these chunks to generate an informed response
+
+Benefits of RAG:
+- Provides more accurate answers based on specific documents
+- Reduces hallucination in AI responses
+- Allows the AI to cite sources
+- Can be updated with new information without retraining
+
+Use Cases:
+- Customer support with product documentation
+- Internal knowledge bases
+- Research assistants
+- Educational tutoring systems
+
+Technical Components:
+- Document Processing: PyPDF and text loaders
+- Vector Store: ChromaDB for efficient similarity search
+- Embeddings: OpenAI's text-embedding-ada-002
+- LLM: GPT-3.5-turbo or GPT-4 for response generation
+- Framework: LangChain for orchestration
+
+This system allows you to build intelligent chatbots that can answer questions based on your own documents!
