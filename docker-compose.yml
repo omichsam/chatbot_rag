@@ -1,0 +1,17 @@
+version: '3'
+services:
+  frontend:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://backend:5000  # If the frontend needs to call the backend
+
+  backend:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    # environment:
+    #   - API_KEY=${API_KEY}  # Example if you use environment variables like API keys

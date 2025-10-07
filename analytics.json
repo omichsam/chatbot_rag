@@ -1,0 +1,174 @@
+{
+  "queries": [
+    {
+      "username": "admin",
+      "question": "hello",
+      "answer": "Error generating response: 404 models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported m...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:12:53.988305"
+    },
+    {
+      "username": "admin",
+      "question": "tell me about innovation",
+      "answer": "Error generating response: 404 models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported m...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:13:10.551846"
+    },
+    {
+      "username": "admin",
+      "question": "tell me about KIPI",
+      "answer": "KIPI is the Kenya Industrial Property Institute. It's the agency where innovators are guided to register their Intellectual Property. WhiteBox offers free IP clinics with KIPI experts and subsidies fo...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:15:34.729798"
+    },
+    {
+      "username": "admin",
+      "question": "compare whitebox to other programs",
+      "answer": "That's a great question! However, the provided information doesn't really give us a good basis to directly compare WhiteBox to other specific programs. It focuses more on what WhiteBox *offers* (like ...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:44:50.358791"
+    },
+    {
+      "username": "admin",
+      "question": "how whitebox supports the innovators",
+      "answer": "Okay, so Whitebox helps innovators in a few key ways! It's like a launchpad, not an ATM, meaning they focus on coaching and connections rather than direct funding.\n\nHere's a breakdown:\n\n*   **Market L...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:45:31.177234"
+    },
+    {
+      "username": "admin",
+      "question": "what about funding",
+      "answer": "Okay, funding is definitely a key question! WhiteBox themselves don't provide direct grants or loans. However, they focus on connecting you with other funding opportunities. They can link you to gover...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:46:23.343367"
+    },
+    {
+      "username": "admin",
+      "question": "help to know common pitfalls for the innovators",
+      "answer": "Okay, I can help with that! Based on the context, some common pitfalls for innovators include:\n\n*   **Weak Problem-Solution Fit:** Basically, trying to solve a problem that isn't really a pressing nee...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:47:06.537765"
+    },
+    {
+      "username": "admin",
+      "question": "exxplain it better",
+      "answer": "Okay, I can try to explain that better. To help me, could you tell me which part you'd like me to elaborate on? Are you interested in a specific section, like the Business Model, Scaling Plan, the pit...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:47:28.351345"
+    },
+    {
+      "username": "admin",
+      "question": "all of it ",
+      "answer": "Okay, I've gone through all the WhiteBox information you've provided. It looks like WhiteBox is really focused on helping innovators get ready for the market and connect with the right people, even th...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:47:48.666349"
+    },
+    {
+      "username": "admin",
+      "question": "about the pitfalls for the innovators to avoid,  have it to be comprehensive",
+      "answer": "Okay, based on the context you've provided, here's a breakdown of the pitfalls innovators should avoid, to make their idea succeed:\n\n**Key Pitfalls for Innovators to Avoid:**\n\n1.  **Ignoring the \"Why\"...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:48:46.378379"
+    },
+    {
+      "username": "admin",
+      "question": "what innovator need to do when pitching",
+      "answer": "Okay, based on this document, when an innovator is pitching, they really need to focus on these key areas:\n\n*   **Address the problem clearly:** Is there a need for this innovation? How does it solve ...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:49:28.742991"
+    },
+    {
+      "username": "admin",
+      "question": "how the onnovator should do research",
+      "answer": "Okay, so you're looking for guidance on how an innovator should approach doing research, specifically in the context of the WhiteBox program. Got it! Based on what we have here, here's a good starting...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:50:04.649937"
+    },
+    {
+      "username": "admin",
+      "question": "how to contact whitebox",
+      "answer": "Okay, so you're looking to get in touch with Whitebox! Great! Based on the information I have, here's how you can reach them:\n\n*   **Phone:** You can give them a call at +254 20 2211960\n*   **Email:**...",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T02:50:37.859665"
+    },
+    {
+      "username": "admin",
+      "question": "aa",
+      "answer": "I don't have any information about \"aa\" in this document. Is there anything else I can help you with?\n",
+      "sources": [
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T18:10:19.720246"
+    },
+    {
+      "username": "admin",
+      "question": "what can whitebox do",
+      "answer": "Okay, so Whitebox sounds like a really helpful initiative! From what I'm seeing, Whitebox acts as a launchpad to help local ventures in Kenya grow and reach a global level. It doesn't directly give gr...",
+      "sources": [
+        "doc1.pdf",
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T18:13:01.542110"
+    },
+    {
+      "username": "admin",
+      "question": "123456789osdfghjkl,",
+      "answer": "That looks like a random string of characters! Is there something specific you were hoping to find out from the provided text? I'm ready to help if you have a more specific question!\n",
+      "sources": [
+        "doc1.pdf",
+        "doc2.pdf"
+      ],
+      "timestamp": "2025-09-17T18:13:40.040855"
+    }
+  ],
+  "users": {
+    "admin": {
+      "query_count": 16,
+      "last_active": "2025-09-17T18:13:40.040855"
+    }
+  },
+  "popular_questions": {
+    "hello": 1,
+    "tell me about innovation": 1,
+    "tell me about kipi": 1,
+    "compare whitebox to other programs": 1,
+    "how whitebox supports the innovators": 1,
+    "what about funding": 1,
+    "help to know common pitfalls for the innovators": 1,
+    "exxplain it better": 1,
+    "all of it": 1,
+    "about the pitfalls for the innovators to avoid,  have it to be comprehensive": 1,
+    "what innovator need to do when pitching": 1,
+    "how the onnovator should do research": 1,
+    "how to contact whitebox": 1,
+    "aa": 1,
+    "what can whitebox do": 1,
+    "123456789osdfghjkl,": 1
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "sam": {
+    "password_hash": "e96e02d8e47f2a7c03be5117b3ed175c52aa30fb22028cf9c96f261563577605",
+    "is_admin": false,
+    "created_at": "2025-09-17T00:53:45.037804"
+  },
+  "admin": {
+    "password_hash": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+    "is_admin": true,
+    "created_at": "2025-09-17T01:41:04.175628"
+  }
+}

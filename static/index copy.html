@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Q&A API - Interactive Interface</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --border: #e2e8f0;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+        }
+
+        header h1 {
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-size: 2.5rem;
+        }
+
+        header p {
+            color: var(--secondary);
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 968px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .card h2 {
+            color: var(--primary);
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card h2 i {
+            font-size: 1.5rem;
+        }
+
+        .api-info {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+
+        .api-info h2 {
+            color: white;
+            border-bottom-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .info-item {
+            margin-bottom: 16px;
+        }
+
+        .info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--light);
+            opacity: 0.9;
+        }
+
+        .info-value {
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .badge-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .badge-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .badge-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+        }
+
+        button.secondary {
+            background: var(--secondary);
+        }
+
+        button.secondary:hover {
+            background: #475569;
+        }
+
+        .response {
+            background: #f8fafc;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .response pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            background: var(--primary);
+            color: white;
+            margin-left: auto;
+        }
+
+        .message.bot {
+            background: white;
+            border: 2px solid var(--border);
+        }
+
+        .sources {
+            font-size: 0.8rem;
+            color: var(--secondary);
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 12px;
+        }
+
+        .chat-input input {
+            flex: 1;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .status-dot.offline {
+            background: var(--danger);
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 16px 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .endpoint {
+            background: #f1f5f9;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .endpoint h4 {
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .endpoint .method {
+            background: var(--primary);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: #f8fafc;
+            border: 2px solid var(--border);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .tab.active {
+            background: white;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-book"></i> Document Q&A API</h1>
+            <p>Ask questions about documents through a comprehensive REST API</p>
+        </header>
+
+        <div class="grid">
+            <div class="card api-info">
+                <h2><i class="fas fa-info-circle"></i> API Information</h2>
+                
+                <div class="info-item">
+                    <div class="info-label">Base URL</div>
+                    <div class="info-value" id="baseUrl"></div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value">
+                        <span class="badge badge-success" id="statusBadge">Checking...</span>
+                        <span id="statusText"></span>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-label">Documents Loaded</div>
+                    <div class="info-value" id="documentsInfo">Checking...</div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-label">Authentication</div>
+                    <div class="info-value" id="authInfo">Checking...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-comments"></i> Interactive Chat</h2>
+                
+                <div class="status">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="connectionStatus">Connecting...</span>
+                </div>
+
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message bot">
+                            <p>Hello! I'm your document assistant. Ask me anything about the documents in the system.</p>
+                            <p>What would you like to know?</p>
+                        </div>
+                    </div>
+
+                    <div class="chat-input">
+                        <input type="text" id="messageInput" placeholder="Type your question here..." autocomplete="off">
+                        <button onclick="sendMessage()">
+                            <i class="fas fa-paper-plane"></i> Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-code"></i> API Testing</h2>
+                
+                <div class="tabs">
+                    <div class="tab active" onclick="showTab('chatTab')">Chat Endpoint</div>
+                    <div class="tab" onclick="showTab('healthTab')">Health Endpoint</div>
+                    <div class="tab" onclick="showTab('authTab')">Authentication</div>
+                </div>
+
+                <div id="chatTab" class="tab-content active">
+                    <div class="form-group">
+                        <label for="apiQuestion">Question</label>
+                        <input type="text" id="apiQuestion" placeholder="Enter your question" value="What is this document about?">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="apiKey">API Key (if required)</label>
+                        <input type="text" id="apiKey" placeholder="Enter your API key">
+                    </div>
+
+                    <button onclick="testChatEndpoint()">
+                        <i class="fas fa-play"></i> Test Endpoint
+                    </button>
+
+                    <div class="response">
+                        <pre id="chatResponse">Response will appear here...</pre>
+                    </div>
+                </div>
+
+                <div id="healthTab" class="tab-content">
+                    <p>Test the health endpoint to check API status and document availability.</p>
+                    
+                    <button onclick="testHealthEndpoint()">
+                        <i class="fas fa-heartbeat"></i> Test Health
+                    </button>
+
+                    <div class="response">
+                        <pre id="healthResponse">Response will appear here...</pre>
+                    </div>
+                </div>
+
+                <div id="authTab" class="tab-content">
+                    <p>Test if your API key is valid.</p>
+                    
+                    <div class="form-group">
+                        <label for="validateKey">API Key</label>
+                        <input type="text" id="validateKey" placeholder="Enter API key to validate">
+                    </div>
+
+                    <button onclick="validateApiKey()">
+                        <i class="fas fa-key"></i> Validate Key
+                    </button>
+
+                    <div class="response">
+                        <pre id="validateResponse">Response will appear here...</pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-book-open"></i> API Documentation</h2>
+                
+                <div class="endpoint">
+                    <h4><span class="method">POST</span> /api/chat</h4>
+                    <p>Ask a question about the documents. Returns an AI-generated response with sources.</p>
+                    <div class="code-block">
+// Request
+{
+  "question": "What is this document about?",
+  "session_id": "optional-session-id"
+}
+
+// Response
+{
+  "success": true,
+  "answer": "The document is about...",
+  "session_id": "session-id",
+  "sources": ["document1.pdf", "document2.txt"],
+  "timestamp": "2023-10-05T12:00:00Z"
+}
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <h4><span class="method">GET</span> /api/health</h4>
+                    <p>Check API status and document availability.</p>
+                    <div class="code-block">
+// Response
+{
+  "status": "healthy",
+  "timestamp": "2023-10-05T12:00:00Z",
+  "documents_loaded": true,
+  "documents_count": 5,
+  "version": "2.0.0"
+}
+                    </div>
+                </div>
+
+                <div class="endpoint">
+                    <h4><span class="method">GET</span> /api/validate-key</h4>
+                    <p>Validate an API key. Requires Authorization header.</p>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="secondary" onclick="openSwagger()">
+                        <i class="fas fa-external-link-alt"></i> Open Full Documentation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let sessionId = generateSessionId();
+        let isOnline = false;
+
+        // Generate session ID
+        function generateSessionId() {
+            return 'session_' + Math.random().toString(36).substring(2, 15);
+        }
+
+        // Set base URL
+        document.getElementById('baseUrl').textContent = window.location.origin + API_BASE;
+
+        // Tab navigation
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.currentTarget.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // Check API status
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                const statusDot = document.getElementById('statusDot');
+                const statusBadge = document.getElementById('statusBadge');
+                const statusText = document.getElementById('statusText');
+                const connectionStatus = document.getElementById('connectionStatus');
+                const documentsInfo = document.getElementById('documentsInfo');
+                const authInfo = document.getElementById('authInfo');
+                
+                // Update status
+                if (data.status === 'healthy') {
+                    statusDot.style.background = 'var(--success)';
+                    statusBadge.className = 'badge badge-success';
+                    statusBadge.textContent = 'Online';
+                    statusText.textContent = 'API is running normally';
+                    connectionStatus.textContent = 'Connected';
+                    isOnline = true;
+                } else {
+                    statusDot.style.background = 'var(--danger)';
+                    statusBadge.className = 'badge badge-danger';
+                    statusBadge.textContent = 'Offline';
+                    statusText.textContent = 'API is experiencing issues';
+                    connectionStatus.textContent = 'Disconnected';
+                    isOnline = false;
+                }
+                
+                // Update documents info
+                documentsInfo.textContent = data.documents_loaded 
+                    ? `${data.documents_count} documents loaded` 
+                    : 'No documents available';
+                
+                // Check if authentication is required
+                try {
+                    const authResponse = await fetch(`${API_BASE}/validate-key`, {
+                        headers: {
+                            'Authorization': 'Bearer test-key'
+                        }
+                    });
+                    
+                    if (authResponse.status === 401) {
+                        authInfo.textContent = 'API key required';
+                    } else {
+                        authInfo.textContent = 'No authentication required';
+                    }
+                } catch {
+                    authInfo.textContent = 'Authentication check failed';
+                }
+                
+            } catch (error) {
+                document.getElementById('statusDot').style.background = 'var(--danger)';
+                document.getElementById('statusBadge').className = 'badge badge-danger';
+                document.getElementById('statusBadge').textContent = 'Offline';
+                document.getElementById('statusText').textContent = 'Cannot connect to API';
+                document.getElementById('connectionStatus').textContent = 'Disconnected';
+                document.getElementById('documentsInfo').textContent = 'Unknown';
+                document.getElementById('authInfo').textContent = 'Unknown';
+                isOnline = false;
+            }
+        }
+
+        // Send chat message
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message || !isOnline) return;
+
+            // Add user message to chat
+            addMessage(message, 'user');
+            input.value = '';
+
+            try {
+                const payload = {
+                    question: message,
+                    session_id: sessionId
+                };
+
+                const response = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    addMessage(result.answer, 'bot', result.sources);
+                } else {
+                    addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+                }
+            } catch (error) {
+                addMessage('Connection error. Please check if the API is running.', 'bot');
+            }
+        }
+
+        // Add message to chat
+        function addMessage(text, type, sources = []) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            let messageHTML = `<p>${text}</p>`;
+            if (sources && sources.length > 0) {
+                messageHTML += `<div class="sources">Sources: ${sources.join(', ')}</div>`;
+            }
+            
+            messageDiv.innerHTML = messageHTML;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Test chat endpoint
+        async function testChatEndpoint() {
+            const question = document.getElementById('apiQuestion').value;
+            const apiKey = document.getElementById('apiKey').value;
+            
+            const payload = {
+                question: question,
+                session_id: 'test-session'
+            };
+
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            };
+
+            if (apiKey) {
+                headers['Authorization'] = `Bearer ${apiKey}`;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                document.getElementById('chatResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('chatResponse').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Test health endpoint
+        async function testHealthEndpoint() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const result = await response.json();
+                document.getElementById('healthResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('healthResponse').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Validate API key
+        async function validateApiKey() {
+            const apiKey = document.getElementById('validateKey').value;
+            
+            if (!apiKey) {
+                document.getElementById('validateResponse').textContent = 'Please enter an API key';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/validate-key`, {
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+                document.getElementById('validateResponse').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('validateResponse').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Open Swagger documentation
+        function openSwagger() {
+            window.open(`${API_BASE}/docs`, '_blank');
+        }
+
+        // Handle Enter key in chat
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkStatus();
+            setInterval(checkStatus, 30000); // Check every 30 seconds
+        });
+    </script>
+</body>
+</html>
