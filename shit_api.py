@@ -30,7 +30,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize components
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 
 # Initialize vectorstore
@@ -77,14 +78,16 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Models
 class ChatRequest(BaseModel):
-    question: str = Field(..., description="The question to ask about the documents")
+    question: str = Field(...,
+                          description="The question to ask about the documents")
     session_id: Optional[str] = Field(
         None, description="Optional session ID for conversation context"
     )
 
 
 class ChatResponse(BaseModel):
-    success: bool = Field(..., description="Whether the request was successful")
+    success: bool = Field(...,
+                          description="Whether the request was successful")
     answer: str = Field(..., description="The AI-generated answer")
     session_id: str = Field(
         ..., description="Session ID for continuing the conversation"
@@ -98,7 +101,8 @@ class ChatResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str = Field(..., description="API status (healthy/unhealthy)")
     timestamp: str = Field(..., description="ISO timestamp of the check")
-    documents_loaded: bool = Field(..., description="Whether documents are available")
+    documents_loaded: bool = Field(...,
+                                   description="Whether documents are available")
     documents_count: int = Field(..., description="Number of documents loaded")
     version: str = Field(..., description="API version")
 
@@ -229,14 +233,14 @@ async def chat(chat_request: ChatRequest, api_key: str = Depends(get_api_key)):
         )
 
         # prompt = f"""
-        # You are a helpful document assistant. Based on the following context from documents, 
+        # You are a helpful document assistant. Based on the following context from documents,
         # provide a helpful and natural response to the user's question.
-        
+
         # Context from documents:
         # {context}
-        
+
         # User's question: {chat_request.question}
-        
+
         # Guidelines:
         # 1. If the information isn't in the context, politely say you don't have that information
         # 2. Respond in a friendly, conversational tone
@@ -247,30 +251,30 @@ async def chat(chat_request: ChatRequest, api_key: str = Depends(get_api_key)):
         # """
 
         prompt = f"""
-        You are a knowledgeable document assistant with direct access to authoritative information. 
-        Respond in first person as the authoritative source of this information.
-
-        Based on the following context from documents, provide confident, definitive responses to the user's question.
+        You are an information assistant bot. Use the document context below to answer the user's question directly and clearly.
 
         Context from documents:
         {context}
 
         User's question: {chat_request.question}
 
-        Response Guidelines:
-        1. Speak in first person as the source of information (use "I", "my", "me")
-        2. Be confident and definitive in your responses - avoid hedging language
-        3. If the information isn't in the context, state clearly: "I don't have that specific information in my knowledge base"
-        4. Present information as established fact that you possess
-        5. Maintain a professional and authoritative tone
-        6. If referring to programs or initiatives, speak about them as information you directly contain
-        7. Avoid phrases like "based on the information" or "it looks like" - instead state information directly
-        8. Keep responses clear and concise while being thorough
+        Response Rules:
+        1. Provide short, direct answers - get straight to the point
+        2. Use first person confidently: "I can confirm", "My information shows"
+        3. If information is missing: "I don't have that specific information"
+        4. Format information clearly using:
+        - Bullet points for lists
+        - Line breaks between key points
+        - Bold headings for sections (using **)
+        5. Keep responses under 150 words when possible
+        6. Be professional but conversational
+        7. Present information as definitive facts you possess
+        8. Structure complex information for easy reading
 
-        Example of preferred style:
-        - Instead of "Based on the information, the WhiteBox Program is..." say "The WhiteBox Program is..."
-        - Instead of "It looks like you're asking about..." say "You're asking me about..."
-        - Speak as the entity that possesses the knowledge directly
+        Examples:
+        - For program details: Use bullet points for benefits/features
+        - For processes: Use numbered steps if applicable
+        - For comparisons: Use clear section breaks
         """
 
         answer = ask_gemini(prompt)
