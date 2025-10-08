@@ -1,17 +1,20 @@
-version: '3'
 services:
-  frontend:
+  streamlit:
     build: .
+    container_name: streamlit_app
     ports:
       - "8501:8501"
-    environment:
-      - API_URL=http://backend:5000  # If the frontend needs to call the backend
+    volumes:
+      - .:/app
+    command: streamlit run shit.py --server.port=8501 --server.address=0.0.0.0
+    depends_on:
+      - api
 
-  backend:
+  api:
     build: .
+    container_name: api_service
     ports:
-      - "5000:5000"
-    env_file:
-      - .env
-    # environment:
-    #   - API_KEY=${API_KEY}  # Example if you use environment variables like API keys
+      - "8000:8000"
+    volumes:
+      - .:/app
+    command: uvicorn shit_api:app --host 0.0.0.0 --port 8000

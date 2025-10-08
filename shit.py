@@ -22,6 +22,14 @@ matplotlib.use('Agg')  # Set the backend to Agg for static plots
 # Load environment variables
 load_dotenv()
 
+# Page configuration
+st.set_page_config(
+    page_title="Document Assistant",
+    page_icon="📚",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 # Configuration
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 UPLOAD_DIR = "uploaded_files"
@@ -46,13 +54,6 @@ vectorstore = get_vectorstore()
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
-# Page configuration
-st.set_page_config(
-    page_title="Document Assistant",
-    page_icon="📚",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # Custom CSS
 st.markdown("""
