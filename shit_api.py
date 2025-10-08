@@ -33,31 +33,9 @@ logger = logging.getLogger(__name__)
 # Initialize components
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-# Improved vectorstore initialization with error handling
+# Initialize vectorstore
 def get_vectorstore():
-    try:
-        # Check if Chroma directory exists and has content
-        if not os.path.exists(CHROMA_DIR):
-            logger.warning(f"Chroma directory {CHROMA_DIR} does not exist")
-            return None
-            
-        # Check if Chroma directory has the necessary files
-        required_files = ['chroma.sqlite3', 'chroma-collections.parquet', 'chroma-embeddings.parquet']
-        existing_files = os.listdir(CHROMA_DIR) if os.path.exists(CHROMA_DIR) else []
-        
-        has_required_files = any(file in existing_files for file in required_files)
-        
-        if not has_required_files:
-            logger.warning(f"Chroma directory {CHROMA_DIR} exists but doesn't contain required database files")
-            return None
-            
-        vectorstore = Chroma(persist_directory=CHROMA_DIR, embedding_function=embeddings)
-        logger.info("Vectorstore initialized successfully")
-        return vectorstore
-        
-    except Exception as e:
-        logger.error(f"Error initializing vectorstore: {e}")
-        return None
+    return Chroma(persist_directory=CHROMA_DIR, embedding_function=embeddings)
 
 vectorstore = get_vectorstore()
 
@@ -123,58 +101,27 @@ class ErrorResponse(BaseModel):
     error: str = Field(..., description="Error message")
     detail: Optional[str] = Field(None, description="Additional error details")
 
-# Improved helper functions
-def get_documents_count():
-    """Get the actual number of documents in the vectorstore"""
+# Helper functions
+def ask_gemini(prompt: str):
+    if not GOOGLE_API_KEY:
+        return "AI service is not configured. Please contact administrator."
     try:
-        if vectorstore is None:
-            return 0
-            
-        # Try multiple methods to get document count
-        methods_to_try = [
-            # Method 1: Try to get collection count
-            lambda: vectorstore._collection.count(),
-            # Method 2: Try similarity search with empty query
-            lambda: len(vectorstore.similarity_search("", k=1000)),
-            # Method 3: Try get method
-            lambda: len(vectorstore.get()['documents']) if vectorstore.get() and 'documents' in vectorstore.get() else 0
-        ]
-        
-        for method in methods_to_try:
-            try:
-                count = method()
-                logger.info(f"Document count retrieved: {count}")
-                return count
-            except Exception as e:
-                logger.debug(f"Document count method failed: {e}")
-                continue
-                
-        return 0
-        
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content(prompt)
+        return response.text
     except Exception as e:
-        logger.error(f"Error getting document count: {e}")
+        logger.error(f"Gemini API error: {e}")
+        return "I'm having trouble connecting to the AI service. Please try again later."
+
+def get_documents_count():
+    try:
+        results = vectorstore.similarity_search("", k=1)
+        return len(results)
+    except:
         return 0
 
 def has_documents():
-    """Check if documents are available"""
-    count = get_documents_count()
-    logger.info(f"Document availability check: {count} documents found")
-    return count > 0
-
-def check_chroma_health():
-    """Comprehensive ChromaDB health check"""
-    health_info = {
-        "chroma_directory_exists": os.path.exists(CHROMA_DIR),
-        "vectorstore_initialized": vectorstore is not None,
-        "document_count": 0,
-        "directory_contents": []
-    }
-    
-    if health_info["chroma_directory_exists"]:
-        health_info["directory_contents"] = os.listdir(CHROMA_DIR)
-        health_info["document_count"] = get_documents_count()
-    
-    return health_info
+    return get_documents_count() > 0
 
 async def get_api_key(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)):
     if not API_KEYS or not API_KEYS[0]:  # No API keys configured
@@ -198,17 +145,12 @@ async def get_api_key(credentials: Optional[HTTPAuthorizationCredentials] = Depe
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def serve_frontend():
     """Serve the chatbot interface"""
-    try:
-        with open("static/index.html", "r") as f:
-            return HTMLResponse(content=f.read(), status_code=200)
-    except FileNotFoundError:
-        return HTMLResponse(content="<html><body><h1>Chatbot Interface</h1><p>Static files not found</p></body></html>")
+    with open("static/index.html", "r") as f:
+        return HTMLResponse(content=f.read(), status_code=200)
 
 @app.get("/api", include_in_schema=False)
 async def api_root():
     """API root endpoint with documentation links"""
-    chroma_health = check_chroma_health()
-    
     return {
         "message": "Document Q&A API",
         "version": "2.0.0",
@@ -217,10 +159,8 @@ async def api_root():
             "redoc": "/api/redoc",
             "chat": "/api/chat",
             "health": "/api/health",
-            "validate_key": "/api/validate-key",
-            "debug_chroma": "/api/debug/chroma"  # Added debug endpoint
+            "validate_key": "/api/validate-key"
         },
-        "chroma_health": chroma_health,
         "authentication": "API key required for all endpoints (except docs and health)" if API_KEYS and API_KEYS[0] else "No authentication required"
     }
 
@@ -248,37 +188,20 @@ async def chat(
         # Generate session ID if not provided
         session_id = chat_request.session_id or str(uuid.uuid4())
         
-        # Check if we have documents with detailed logging
-        documents_available = has_documents()
-        logger.info(f"Chat request - Documents available: {documents_available}")
-        
-        if not documents_available:
-            chroma_health = check_chroma_health()
-            logger.warning(f"No documents available. Chroma health: {chroma_health}")
-            
+        # Check if we have documents
+        if not has_documents():
             return ChatResponse(
                 success=True,
-                answer="I don't have any documents to reference yet. The system is configured but no documents are currently loaded in the database. Please check if documents were properly uploaded to the chroma_db directory.",
+                answer="I don't have any documents to reference yet. Please check back later when documents have been loaded.",
                 session_id=session_id,
                 sources=[],
                 timestamp=datetime.now().isoformat()
             )
         
         # Search for relevant content
-        try:
-            results = vectorstore.similarity_search(chat_request.question, k=5)
-            context = "\n\n".join([doc.page_content for doc in results])
-            sources = list(set([doc.metadata.get("filename", "Unknown") for doc in results]))
-            logger.info(f"Found {len(results)} relevant documents for query: {chat_request.question}")
-        except Exception as e:
-            logger.error(f"Error searching documents: {e}")
-            return ChatResponse(
-                success=True,
-                answer="I encountered an error while searching the documents. Please try again later.",
-                session_id=session_id,
-                sources=[],
-                timestamp=datetime.now().isoformat()
-            )
+        results = vectorstore.similarity_search(chat_request.question, k=5)
+        context = "\n\n".join([doc.page_content for doc in results])
+        sources = list(set([doc.metadata.get("filename", "Unknown") for doc in results]))
         
         prompt = f"""
         You are a helpful document assistant. Based on the following context from documents, 
@@ -326,10 +249,6 @@ async def health_check():
     """
     try:
         documents_count = get_documents_count()
-        chroma_health = check_chroma_health()
-        
-        logger.info(f"Health check - Documents count: {documents_count}, Chroma health: {chroma_health}")
-        
         return HealthResponse(
             status="healthy",
             timestamp=datetime.now().isoformat(),
@@ -346,11 +265,6 @@ async def health_check():
             documents_count=0,
             version="2.0.0"
         )
-
-@app.get("/api/debug/chroma", include_in_schema=False)
-async def debug_chroma():
-    """Debug endpoint to check ChromaDB status"""
-    return check_chroma_health()
 
 @app.get("/api/validate-key", 
          response_model=APIKeyResponse,
@@ -403,11 +317,6 @@ async def general_exception_handler(request, exc):
 
 if __name__ == "__main__":
     import uvicorn
-    
-    # Log startup information
-    chroma_health = check_chroma_health()
-    logger.info(f"Starting server with Chroma health: {chroma_health}")
-    
     uvicorn.run(
         app, 
         host="0.0.0.0", 
