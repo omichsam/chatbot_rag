@@ -232,50 +232,50 @@ async def chat(chat_request: ChatRequest, api_key: str = Depends(get_api_key)):
             set([doc.metadata.get("filename", "Unknown") for doc in results])
         )
 
-        # prompt = f"""
-        # You are a helpful document assistant. Based on the following context from documents,
-        # provide a helpful and natural response to the user's question.
-
-        # Context from documents:
-        # {context}
-
-        # User's question: {chat_request.question}
-
-        # Guidelines:
-        # 1. If the information isn't in the context, politely say you don't have that information
-        # 2. Respond in a friendly, conversational tone
-        # 3. Be helpful and informative
-        # 4. If the question is unclear, ask for clarification
-        # 5. Keep responses concise but thorough
-        # 6. Always be polite and professional
-        # """
-
         prompt = f"""
-        You are an information assistant bot. Use the document context below to answer the user's question directly and clearly.
+        You are a helpful document assistant. Based on the following context from documents,
+        provide a helpful and natural response to the user's question.
 
         Context from documents:
         {context}
 
         User's question: {chat_request.question}
 
-        Response Rules:
-        1. Provide short, direct answers - get straight to the point
-        2. Use first person confidently: "I can confirm", "My information shows"
-        3. If information is missing: "I don't have that specific information"
-        4. Format information clearly using:
-        - Bullet points for lists
-        - Line breaks between key points
-        - Bold headings for sections (using **)
-        5. Keep responses under 150 words when possible
-        6. Be professional but conversational
-        7. Present information as definitive facts you possess
-        8. Structure complex information for easy reading
-
-        Examples:
-        - For program details: Use bullet points for benefits/features
-        - For processes: Use numbered steps if applicable
-        - For comparisons: Use clear section breaks
+        Guidelines:
+        1. If the information isn't in the context, politely say you don't have that information
+        2. Respond in a friendly, conversational tone
+        3. Be helpful and informative
+        4. If the question is unclear, ask for clarification
+        5. Keep responses concise but thorough
+        6. Always be polite and professional
         """
+
+        # prompt = f"""
+        # You are an information assistant bot. Use the document context below to answer the user's question directly and clearly.
+
+        # Context from documents:
+        # {context}
+
+        # User's question: {chat_request.question}
+
+        # Response Rules:
+        # 1. Provide short, direct answers - get straight to the point
+        # 2. Use first person confidently: "I can confirm", "My information shows"
+        # 3. If information is missing: "I don't have that specific information"
+        # 4. Format information clearly using:
+        # - Bullet points for lists
+        # - Line breaks between key points
+        # - Bold headings for sections (using **)
+        # 5. Keep responses under 150 words when possible
+        # 6. Be professional but conversational
+        # 7. Present information as definitive facts you possess
+        # 8. Structure complex information for easy reading
+
+        # Examples:
+        # - For program details: Use bullet points for benefits/features
+        # - For processes: Use numbered steps if applicable
+        # - For comparisons: Use clear section breaks
+        # """
 
         answer = ask_gemini(prompt)
 
