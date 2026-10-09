@@ -1,0 +1,81 @@
+{% extends "portal/base.html" %}
+{% load humanize ui %}
+{% block title %}Audit log · Platform Console{% endblock %}
+{% block crumb %}Audit log{% endblock %}
+{% block style %}
+.audit-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; padding: 16px 18px; }
+.audit-filters label { font-size: .8rem; font-weight: 600; display: block; margin-bottom: 4px; }
+.audit-filters input, .audit-filters select { width: 100%; }
+.changes { margin: 0; border-collapse: collapse; font-size: .82rem; }
+.changes td { padding: 2px 10px 2px 0; border: 0; }
+.changes .old { color: var(--bad); text-decoration: line-through; }
+.changes .new { color: var(--good); font-weight: 600; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Audit log</h1>
+    <p>Every action in the Platform Console, every failed sign-in and every settings change: who, what, where and when. {{ page.paginator.count|intcomma }} entr{{ page.paginator.count|pluralize:"y,ies" }} match.</p>
+  </div>
+  <a class="btn" href="?{{ query }}{% if query %}&{% endif %}format=csv">{% icon "upload" 16 %} Export CSV</a>
+</div>
+
+<form method="get" class="card audit-filters">
+  <div><label for="a-action">Action</label>
+    <select id="a-action" name="action">
+      <option value="">All actions</option>
+      {% for prefix, label in groups %}<option value="{{ prefix }}" {% if filters.action == prefix %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></div>
+  <div><label for="a-actor">Who</label>
+    <select id="a-actor" name="actor"><option value="">Anyone</option>{% for name in actors %}<option value="{{ name }}" {% if filters.actor == name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+  <div><label for="a-org">Organization</label><input id="a-org" type="text" name="org" value="{{ filters.org }}" placeholder="Name"></div>
+  <div><label for="a-q">Contains</label><input id="a-q" type="text" name="q" value="{{ filters.q }}" placeholder="Target or detail"></div>
+  <div><label for="a-since">From</label><input id="a-since" type="date" name="since" value="{{ filters.since }}"></div>
+  <div><label for="a-until">To</label><input id="a-until" type="date" name="until" value="{{ filters.until }}"></div>
+  <div style="display:flex;gap:8px"><button class="btn btn-primary" type="submit">Filter</button>{% if query %}<a class="btn btn-ghost" href="{% url 'portal:audit' %}">Reset</a>{% endif %}</div>
+</form>
+
+<div class="card flush">
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Organization</th><th>What changed</th></tr></thead>
+    <tbody>
+      {% for a in page %}
+        <tr>
+          <td class="small" title="{{ a.created_at }}">{{ a.created_at|date:"j M Y H:i" }}<div class="faint">{{ a.created_at|naturaltime }}</div></td>
+          <td>{{ a.actor.username|default:"system" }}</td>
+          <td><code>{{ a.action }}</code></td>
+          <td>{{ a.target }}</td>
+          <td>{% if a.organization %}<a href="{% url 'portal:organization' a.organization_id %}">{{ a.organization_name }}</a>{% else %}{{ a.organization_name|default:"–" }}{% endif %}</td>
+          <td>
+            {% if a.changes %}
+              <table class="changes">{% for label, old, new in a.changes %}<tr><td>{{ label }}</td><td class="old">{{ old }}</td><td>→</td><td class="new">{{ new }}</td></tr>{% endfor %}</table>
+            {% else %}<span class="small muted">{{ a.detail }}</span>{% endif %}
+          </td>
+        </tr>
+      {% empty %}<tr><td colspan="6" class="muted">No entries match.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  <div class="dt-foot">
+    <span class="dt-info">{% if page.paginator.count %}Showing {{ page.start_index }}–{{ page.end_index }} of {{ page.paginator.count|intcomma }}{% else %}0 entries{% endif %}</span>
+    {% if page.has_other_pages %}
+    <nav class="dt-pager" aria-label="Audit pages">
+      {% if page.has_previous %}<a class="dt-page" href="?{{ query }}&page={{ page.previous_page_number }}" aria-label="Previous page">‹</a>{% else %}<button class="dt-page" type="button" disabled aria-label="Previous page">‹</button>{% endif %}
+      {% for n in page_numbers %}
+        {% if n == ellipsis %}<span class="dt-gap">…</span>{% elif n == page.number %}<span class="dt-page on" aria-current="page">{{ n }}</span>{% else %}<a class="dt-page" href="?{{ query }}&page={{ n }}">{{ n }}</a>{% endif %}
+      {% endfor %}
+      {% if page.has_next %}<a class="dt-page" href="?{{ query }}&page={{ page.next_page_number }}" aria-label="Next page">›</a>{% else %}<button class="dt-page" type="button" disabled aria-label="Next page">›</button>{% endif %}
+    </nav>
+    {% endif %}
+  </div>
+</div>
+
+<details class="howto">
+  <summary>{% icon "help" 16 %} How the audit log works</summary>
+  <div class="body"><ul>
+    <li>Every console action writes one entry automatically; entries can't be edited or deleted from the app.</li>
+    <li>Changes recorded as "label: old → new" are shown as before and after.</li>
+    <li>Failed sign-ins, sign-in pauses and two-factor events appear under <strong>Security</strong>.</li>
+    <li>The organization's name is stored with each entry, so it still reads correctly after an organization is deleted. Export to CSV for reviews or compliance.</li>
+  </ul></div>
+</details>
+{% endblock %}

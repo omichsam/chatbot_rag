@@ -1,0 +1,100 @@
+{% extends "portal/base.html" %}
+{% load humanize ui %}
+{% block title %}AI providers · Platform Console{% endblock %}
+{% block crumb %}AI providers{% endblock %}
+{% block style %}
+.chain { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.chain .step { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); font-size: .9rem; }
+.chain .step b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--text); color: var(--bg); font-size: .75rem; }
+.chain .step.last { border-style: dashed; color: var(--text-2); }
+.chain .step.last b { background: var(--surface-3); color: var(--text-2); }
+.chain .arrow { color: var(--text-3); }
+.prov { display: flex; flex-direction: column; gap: 2px; }
+.prov strong { font-weight: 600; }
+.test-note { display: block; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tr.off td:not(:last-child) { opacity: .55; }
+.keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; font-size: .88rem; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>AI providers</h1>
+    <p>The models that write answers, tried in order. Add a provider, paste its API key, test it, and arrange the order.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'portal:ai_provider_add' %}">{% icon "plus" 16 %} Add provider</a>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>How answers are written</h2>
+    <nav class="seg" aria-label="Period" style="display:inline-flex;padding:3px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)">{% for d in periods %}<a href="?period={{ d }}" style="padding:4px 10px;border-radius:7px;font-size:.82rem;{% if d == days %}background:var(--surface);font-weight:600;color:var(--text){% else %}color:var(--text-2){% endif %}">{{ d }} days</a>{% endfor %}</nav></div>
+  <div class="chain" aria-label="Answer order">
+    {% for p in chain %}
+      <span class="step"><b>{{ forloop.counter }}</b>{{ p.name }}{% if not p.is_external %} <span class="badge plain">on your server</span>{% endif %}</span>
+      <span class="arrow" aria-hidden="true">→</span>
+    {% endfor %}
+    <span class="step last"><b>{{ chain|length|add:1 }}</b>{% if quoted %}Quote the documents (always works){% else %}Show an error (quoting is turned off){% endif %}</span>
+  </div>
+  {% if insights.total %}<p class="small" style="margin:14px 0 0">Last {{ days }} days: {{ insights.total }} answers, {% for r in insights.rows %}{% if r.answers %}{{ r.provider.name }} {{ r.share }}%, {% endif %}{% endfor %}quoted {{ insights.quoted_share }}%, reused {{ insights.cache_share }}%.</p>{% endif %}
+  <p class="small muted" style="margin:8px 0 0">If a provider fails or runs out of quota, the next one answers. Organizations that switch off external AI in their Settings only use providers marked “on your server”.</p>
+</div>
+
+<div class="card flush">
+  {% if providers %}
+  <div class="table-wrap">
+    <table data-table data-label="providers">
+      <thead><tr><th class="num">Order</th><th>Provider</th><th>Model</th><th>API key</th><th>Status</th><th class="num">Answers · {{ days }}d</th><th class="num">Failures</th><th>Last test</th><th data-nosort></th></tr></thead>
+      <tbody>
+      {% for p in providers %}
+        <tr{% if not p.is_enabled %} class="off"{% endif %}>
+          <td class="num">{{ forloop.counter }}</td>
+          <td><span class="prov"><strong>{{ p.name }}</strong><span class="small faint">{{ p.get_kind_display }}</span></span></td>
+          <td class="small"><code>{{ p.model_for|default:"–" }}</code>{% if p.kind == 'gemini' and not p.model %}<br><span class="faint">platform default</span>{% endif %}</td>
+          <td class="small"{% if p.key_display == 'Missing' or p.key_unreadable %} style="color:var(--bad)"{% endif %}>{{ p.key_display }}</td>
+          <td>{% if p.is_enabled %}<span class="badge good">Enabled</span>{% else %}<span class="badge">Disabled</span>{% endif %}</td>
+          {% with i=insight_by_id|get:p.pk %}
+          <td class="num" data-sort="{{ i.answers|default:0 }}">{{ i.answers|default:0 }}{% if i.share %}<div class="small faint">{{ i.share }}%{% if i.avg_seconds %} · {{ i.avg_seconds|floatformat:1 }} s{% endif %}</div>{% endif %}</td>
+          <td class="num" data-sort="{{ i.failures|default:0 }}">{% if i.failures %}<strong style="color:var(--bad)" title="{{ i.last_error.0 }}">{{ i.failures }}</strong>{% if i.last_error %}<div class="small faint">last {{ i.last_error.1|naturaltime }}</div>{% endif %}{% else %}0{% endif %}</td>
+          {% endwith %}
+          <td class="small" data-sort="{{ p.last_tested_at|date:'c' }}">
+            {% if p.last_tested_at %}
+              <span class="status-dot {% if p.last_test_ok %}ok{% else %}bad{% endif %}"></span> {{ p.last_tested_at|naturaltime }}
+              <span class="test-note faint" title="{{ p.last_test_message }}">{{ p.last_test_message }}</span>
+            {% else %}<span class="faint">Not tested</span>{% endif %}
+          </td>
+          <td>
+            <div class="actions">
+              <form method="post" action="{% url 'portal:ai_provider_action' p.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="up"><button class="btn btn-sm btn-ghost btn-icon" title="Answer earlier" {% if forloop.first %}disabled{% endif %}>↑<span class="sr-only">Move up</span></button></form>
+              <form method="post" action="{% url 'portal:ai_provider_action' p.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="down"><button class="btn btn-sm btn-ghost btn-icon" title="Answer later" {% if forloop.last %}disabled{% endif %}>↓<span class="sr-only">Move down</span></button></form>
+              <form method="post" action="{% url 'portal:ai_provider_action' p.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="test"><button class="btn btn-sm" title="Send a tiny test request">{% icon "play" 13 %} Test</button></form>
+              <a class="btn btn-sm btn-ghost" href="{% url 'portal:ai_provider' p.pk %}">Edit</a>
+              <form method="post" action="{% url 'portal:ai_provider_action' p.pk %}" class="inline"
+                    data-confirm-title="{% if p.is_enabled %}Disable{% else %}Enable{% endif %} {{ p.name }}?"
+                    data-confirm="{% if p.is_enabled %}Answers will skip it and use the next provider.{% else %}It will answer again in its place in the order.{% endif %}"
+                    data-confirm-label="{% if p.is_enabled %}Disable{% else %}Enable{% endif %}" data-confirm-tone="neutral">{% csrf_token %}<input type="hidden" name="action" value="{% if p.is_enabled %}disable{% else %}enable{% endif %}"><button class="btn btn-sm btn-ghost">{% if p.is_enabled %}Disable{% else %}Enable{% endif %}</button></form>
+              <form method="post" action="{% url 'portal:ai_provider_action' p.pk %}" class="inline"
+                    data-confirm-title="Remove {{ p.name }}?" data-confirm="Its saved API key is deleted. Answers use the remaining providers." data-confirm-label="Remove">{% csrf_token %}<input type="hidden" name="action" value="delete"><button class="btn btn-sm btn-ghost btn-icon btn-danger" title="Remove">{% icon "trash" 15 %}<span class="sr-only">Remove</span></button></form>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="stat-icon">{% icon "sparkles" 24 %}</div>
+      <h3>No AI providers yet</h3>
+      <p>Answers quote the documents until you add one.</p>
+      <a class="btn btn-primary" href="{% url 'portal:ai_provider_add' %}">{% icon "plus" 16 %} Add provider</a>
+    </div>
+  {% endif %}
+</div>
+
+<details class="howto">
+  <summary>{% icon "key" 16 %} Where to get API keys</summary>
+  <div class="body">
+    <ul class="keys">{% for label, url in key_links %}<li><a href="{{ url }}" target="_blank" rel="noopener">{{ label }} ↗</a></li>{% endfor %}</ul>
+    <p class="small muted" style="margin:12px 0 0">Keys are encrypted before they are stored and are never shown again. Groq and OpenRouter offer free tiers that make good backups. A local Ollama model keeps everything on your server, but needs a strong machine to be quick.</p>
+  </div>
+</details>
+{% endblock %}

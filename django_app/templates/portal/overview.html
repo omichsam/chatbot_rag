@@ -1,0 +1,164 @@
+{% extends "portal/base.html" %}
+{% load humanize ui %}
+{% block title %}Dashboard · Platform Console{% endblock %}
+{% block crumb %}Dashboard{% endblock %}
+{% block style %}
+.ops-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.ops-head h1 { font-size: 1.75rem; }
+.ops-head p { margin: 6px 0 0; color: var(--text-2); }
+.seg { display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.seg a { padding: 6px 12px; border-radius: 7px; font-size: .86rem; color: var(--text-2); }
+.seg a:hover { text-decoration: none; color: var(--text); }
+.seg a.on { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: var(--shadow-sm); }
+.ops-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+@media (max-width: 1100px) { .ops-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .ops-kpis { grid-template-columns: minmax(0, 1fr); } }
+.ops-kpis .card { margin: 0; padding: 16px 18px; }
+.ops-kpis .l { font-size: .84rem; color: var(--text-2); display: flex; justify-content: space-between; gap: 8px; }
+.ops-kpis .v { font-size: 1.85rem; font-weight: 650; letter-spacing: -.03em; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+.ops-kpis .v small { font-size: 1rem; color: var(--text-2); font-weight: 500; }
+.ops-kpis .s { font-size: .82rem; color: var(--text-2); }
+.delta { font-size: .74rem; font-weight: 650; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--text-3); white-space: nowrap; }
+.delta.up { background: var(--good-soft); color: var(--good); }
+.delta.down { background: var(--bad-soft); color: var(--bad); }
+.tone-bad { color: var(--bad); } .tone-warn { color: var(--warn); } .tone-good { color: var(--good); }
+.ops-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+@media (max-width: 1000px) { .ops-grid { grid-template-columns: minmax(0, 1fr); } }
+.ops-grid > .card { margin: 0; min-width: 0; }
+.prov-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: .9rem; }
+.prov-row:last-child { border-bottom: 0; }
+.prov-row .bar { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.prov-row .bar span { display: block; height: 100%; background: #6366f1; border-radius: 999px; }
+.prov-row .meta { grid-column: 1 / -1; font-size: .78rem; color: var(--text-3); }
+.prov-row .meta .err { color: var(--bad); }
+{% endblock %}
+{% block content %}
+<div class="ops-head">
+  <div>
+    <h1>Platform dashboard</h1>
+    <p>How the whole platform is doing, across every organization · last {{ days }} days</p>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <nav class="seg" aria-label="Period">{% for p in periods %}<a href="?period={{ p }}" class="{% if p == days %}on{% endif %}">{{ p }} days</a>{% endfor %}</nav>
+    {% if portal_role == 'owner' or portal_role == 'finance' %}<a class="btn" href="{% url 'portal:usage_export' %}?period={{ days }}">{% icon "upload" 15 %} Usage CSV</a>{% endif %}
+  </div>
+</div>
+
+<div class="ops-kpis">
+  <div class="card">
+    <div class="l"><span>Questions</span>{% if ops.questions_delta is not None %}<span class="delta {% if ops.questions_delta > 0 %}up{% elif ops.questions_delta < 0 %}down{% endif %}">{% if ops.questions_delta > 0 %}+{% endif %}{{ ops.questions_delta }}%</span>{% endif %}</div>
+    <div class="v">{{ ops.questions|intcomma }}</div>
+    <div class="s">{{ ops.answers|intcomma }} answers{% if ops.avg_seconds %} · {{ ops.avg_seconds|floatformat:1 }} s average{% endif %}</div>
+  </div>
+  <div class="card">
+    <div class="l"><span>Active organizations</span>{% if ops.active_orgs_delta is not None %}<span class="delta {% if ops.active_orgs_delta > 0 %}up{% elif ops.active_orgs_delta < 0 %}down{% endif %}">{% if ops.active_orgs_delta > 0 %}+{% endif %}{{ ops.active_orgs_delta }}%</span>{% endif %}</div>
+    <div class="v">{{ ops.active_orgs }}<small> / {{ ops.orgs_total }}</small></div>
+    <div class="s">{% if ops.orgs_suspended %}{{ ops.orgs_suspended }} suspended{% else %}none suspended{% endif %}{% if ops.orgs_deleting %} · {{ ops.orgs_deleting }} being deleted{% endif %}</div>
+  </div>
+  <div class="card">
+    <div class="l"><span>Active people</span>{% if ops.active_people_delta is not None %}<span class="delta {% if ops.active_people_delta > 0 %}up{% elif ops.active_people_delta < 0 %}down{% endif %}">{% if ops.active_people_delta > 0 %}+{% endif %}{{ ops.active_people_delta }}%</span>{% endif %}</div>
+    <div class="v">{{ ops.active_people }}</div>
+    <div class="s">asked at least one question in the web app</div>
+  </div>
+  <div class="card">
+    <div class="l"><span>Answer reliability</span></div>
+    <div class="v {% if ops.failure_pct %}tone-bad{% elif ops.backup_pct %}tone-warn{% endif %}">{% if ops.failure_pct is not None %}{{ ops.failure_pct }}<small>% failed</small>{% else %}–{% endif %}</div>
+    <div class="s">{% if ops.backup_pct %}<span class="tone-warn">{{ ops.backup_pct }}% answered by a backup</span>{% else %}No backup answers{% endif %} · {{ ops.storage|filesizeformat }} stored</div>
+  </div>
+</div>
+
+<div class="ops-grid">
+  <div class="card">
+    <div class="card-head">
+      <h2 style="margin:0">Questions per day</h2>
+      <div class="legend">
+        <span><i style="background:var(--s-web)"></i>Web {{ source_totals.web }}</span>
+        <span><i style="background:var(--s-api)"></i>API {{ source_totals.api }}</span>
+        <span><i style="background:var(--s-test)"></i>Test {{ source_totals.test }}</span>
+      </div>
+    </div>
+    {% if peak %}
+      <div class="stack-chart" role="img" aria-label="Questions per day for {{ days }} days, split by web, API and test. Peak {{ peak }} per day.">
+        {% for d in series %}
+          <div class="stack-col" tabindex="0">
+            {% if d.web %}<span class="web" style="height:{{ d.web_pct }}%"></span>{% endif %}
+            {% if d.api %}<span class="api" style="height:{{ d.api_pct }}%"></span>{% endif %}
+            {% if d.test %}<span class="test" style="height:{{ d.test_pct }}%"></span>{% endif %}
+            <div class="tip"><strong>{{ d.day|date:"D, M j" }}</strong><br>Web {{ d.web }} · API {{ d.api }} · Test {{ d.test }}</div>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="axis"><span>{{ series.0.day|date:"M j" }}</span><span>Peak {{ peak }}/day</span><span>Today</span></div>
+    {% else %}
+      <div class="empty-state"><h3>No questions in the last {{ days }} days</h3></div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div><h2 style="margin:0">AI providers</h2><div class="small faint" style="margin-top:3px">Who wrote the {{ providers.total }} answers</div></div>{% if portal_role == 'owner' %}<a class="small" href="{% url 'portal:ai_providers' %}">Manage →</a>{% endif %}</div>
+    {% for r in providers.rows %}
+      <div class="prov-row">
+        <span><strong>{{ r.provider.name }}</strong>{% if not r.provider.is_enabled %} <span class="badge plain">off</span>{% endif %}</span>
+        <span class="small">{{ r.answers }} · {{ r.share }}%</span>
+        <div class="bar"><span style="width:{{ r.share }}%"></span></div>
+        <div class="meta">{% if r.avg_seconds %}{{ r.avg_seconds|floatformat:1 }} s average{% else %}no answers{% endif %}{% if r.failures %} · <span class="err">{{ r.failures }} failure{{ r.failures|pluralize }}{% if r.last_error %}, last {{ r.last_error.1|naturaltime }}: {{ r.last_error.0|truncatechars:70 }}{% endif %}</span>{% endif %}</div>
+      </div>
+    {% empty %}<p class="muted" style="margin:0">No AI providers configured.</p>{% endfor %}
+    {% if providers.quoted or providers.cache %}
+      <div class="prov-row"><span>Quoted from documents</span><span class="small">{{ providers.quoted }} · {{ providers.quoted_share }}%</span><div class="bar"><span style="width:{{ providers.quoted_share }}%;background:var(--warn)"></span></div></div>
+      <div class="prov-row"><span>Reused earlier answers</span><span class="small">{{ providers.cache }} · {{ providers.cache_share }}%</span><div class="bar"><span style="width:{{ providers.cache_share }}%;background:var(--good)"></span></div></div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card flush">
+  <div class="card-head" style="padding:18px 20px 0"><h2 style="margin:0">Organizations</h2><a class="small" href="{% url 'portal:organizations' %}">All organizations →</a></div>
+  <div class="table-wrap" style="margin-top:10px"><table data-table data-label="organizations">
+    <thead><tr><th>Organization</th><th>Plan</th><th class="num">Questions</th><th class="num">Success</th><th class="num">Members</th><th class="num">Documents</th><th class="num">Storage</th><th>Last activity</th></tr></thead>
+    <tbody>
+      {% for org, s in org_rows %}
+        <tr>
+          <td><a href="{% url 'portal:organization' org.pk %}" style="color:var(--text);font-weight:600">{{ org.name }}</a>{% if org.deletion_scheduled_at %} <span class="badge bad plain">Deleting</span>{% elif not org.is_active %} <span class="badge bad plain">Suspended</span>{% endif %}</td>
+          <td><span class="badge plain">{{ org.plan.name|default:"Custom" }}</span></td>
+          <td class="num">{{ s.questions|default:0 }}</td>
+          <td class="num">{% if s.success_pct is not None %}{{ s.success_pct }}%{% else %}–{% endif %}</td>
+          <td class="num">{{ s.members|default:0 }}</td>
+          <td class="num">{{ s.docs_ready|default:0 }}</td>
+          <td class="num small" data-sort="{{ s.storage|default:0 }}">{{ s.storage|default:0|filesizeformat }}</td>
+          <td class="small muted" data-sort="{{ s.last_activity|date:'c' }}">{{ s.last_activity|naturaltime|default:"never" }}</td>
+        </tr>
+      {% empty %}<tr><td colspan="8" class="muted">No organizations yet.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-head"><h2 style="margin:0">Needs attention</h2>{% if attention %}<span class="badge bad plain">{{ attention|length }}</span>{% endif %}</div>
+    {% for item in attention %}
+      <div style="display:flex;gap:12px;align-items:center;padding:10px 0;{% if not forloop.last %}border-bottom:1px solid var(--border){% endif %}">
+        <span class="status-dot bad"></span>
+        <span style="flex:1;min-width:0"><strong>{{ item.org.name }}</strong><br><span class="small muted">{{ item.reasons|join:" · " }}</span></span>
+        <a class="btn btn-sm" href="{% url 'portal:organization' item.org.pk %}">Open</a>
+      </div>
+    {% empty %}
+      <p class="muted" style="margin:0">{% icon "check" 16 %} Nothing needs attention right now.</p>
+    {% endfor %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h2 style="margin:0">System health</h2>{% if portal_role != 'finance' %}<a class="small" href="{% url 'portal:system' %}">Details</a>{% endif %}</div>
+    {% for c in checks %}
+      <div style="display:flex;gap:10px;align-items:center;padding:7px 0">
+        <span class="status-dot {% if c.ok %}ok{% elif c.ok is None %}unknown{% else %}bad{% endif %}"></span>
+        <span style="flex:1">{{ c.name }}</span><span class="small muted">{{ c.summary|truncatechars:60 }}</span>
+      </div>
+    {% endfor %}
+    {% if portal_role != 'finance' %}
+    <div class="card-head" style="margin:16px 0 6px"><h2 style="margin:0;font-size:.95rem">Recent console actions</h2><a class="small" href="{% url 'portal:audit' %}">Audit log</a></div>
+    {% for a in recent_actions %}
+      <div style="display:flex;gap:10px;padding:5px 0;font-size:.86rem"><code>{{ a.action }}</code><span style="flex:1;min-width:0">{{ a.target|truncatechars:40 }}</span><span class="small faint">{{ a.actor.username|default:"system" }} · {{ a.created_at|naturaltime }}</span></div>
+    {% empty %}<p class="muted small" style="margin:0">No console actions yet.</p>{% endfor %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Settings · {{ organization.name }}{% endblock %}
+{% block crumb %}Settings{% endblock %}
+{% block style %}
+.settings-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 28px; align-items: start; }
+.settings-nav { position: sticky; top: 84px; display: grid; gap: 2px; }
+.settings-nav a { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-radius: 8px; color: var(--text-2); font-size: .9rem; }
+.settings-nav a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+.settings-nav a.on { background: var(--surface-2); color: var(--text); font-weight: 600; }
+.settings-nav a.bad { color: var(--bad); }
+.settings-nav a .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-left: auto; display: none; }
+.settings-nav a.changed .dot { display: inline-block; }
+.settings-nav a.bad .dot { display: inline-block; background: var(--bad); }
+.tabbed .ssection { display: none; }
+.tabbed .ssection.active { display: block; animation: tab-in .15s ease-out; }
+@keyframes tab-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* Narrow screens: one column, and the section menu becomes a scrolling tab bar under the top bar. */
+@media (max-width: 900px) {
+  .settings-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .settings-nav { top: 63px; z-index: 6; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+    margin: 0 -16px; padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .settings-nav::-webkit-scrollbar { display: none; }
+  .settings-nav a { flex-shrink: 0; white-space: nowrap; padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; font-size: .84rem; }
+  .settings-nav a.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .settings-nav a svg { display: none; }
+  .ssection { scroll-margin-top: 120px; }
+  .ssection > header { padding: 16px 16px 0; }
+  .ssection .body { padding: 16px 16px 18px; gap: 16px; }
+  .opts { grid-template-columns: minmax(0, 1fr); }
+  .savebar { padding: 10px 12px; margin: 4px -4px 0; }
+  .savebar .state { font-size: .8rem; }
+}
+.ssection { scroll-margin-top: 80px; padding: 0; overflow: hidden; }
+.ssection > header { padding: 20px 24px 0; }
+.ssection > header h2 { margin: 0 0 4px; display: flex; align-items: center; gap: 9px; }
+.ssection > header p { margin: 0; color: var(--text-2); font-size: .88rem; }
+.ssection .body { padding: 20px 24px 22px; display: grid; gap: 20px; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 760px) { .two, .three { grid-template-columns: minmax(0, 1fr); } }
+.sfield-label { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.sfield-label label { font-weight: 600; font-size: .88rem; }
+.sfield-help { margin: 6px 0 0; color: var(--text-3); font-size: .8rem; line-height: 1.45; }
+.sfield-error { margin: 6px 0 0; color: var(--bad); font-size: .82rem; font-weight: 550; }
+.sfield.has-error input, .sfield.has-error textarea, .sfield.has-error select { border-color: var(--bad); }
+.sfield input:not([type=checkbox]):not([type=radio]), .sfield textarea { width: 100%; }
+
+/* Option cards for choice settings */
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.opt { position: relative; display: block; padding: 13px 14px 13px 40px; border: 1px solid var(--border); border-radius: 11px; cursor: pointer; transition: border-color .15s, background .15s; }
+.opt:hover { border-color: var(--border-strong); }
+.opt input { position: absolute; left: 14px; top: 15px; accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.opt b { display: block; font-size: .9rem; font-weight: 600; }
+.opt span { display: block; font-size: .8rem; color: var(--text-2); margin-top: 3px; line-height: 1.4; }
+.opt:has(input:checked) { border-color: var(--text); background: var(--surface-2); box-shadow: 0 0 0 1px var(--text) inset; }
+.opt-group > .sfield-label { margin-bottom: 8px; }
+
+/* Switches */
+.switch-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 11px; }
+.switch-row .txt b { display: block; font-size: .9rem; font-weight: 600; }
+.switch-row .txt span { display: block; font-size: .8rem; color: var(--text-2); margin-top: 3px; line-height: 1.45; }
+.switch { position: relative; flex-shrink: 0; width: 40px; height: 23px; }
+.switch input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 1; }
+.switch i { position: absolute; inset: 0; border-radius: 999px; background: var(--border-strong); transition: background .15s; }
+.switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+.switch input:checked + i { background: var(--good); }
+.switch input:checked + i::after { transform: translateX(17px); }
+.switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Side info inside sections */
+.info { display: flex; gap: 12px; align-items: flex-start; padding: 13px 15px; border-radius: 11px; background: var(--surface-2); font-size: .85rem; color: var(--text-2); line-height: 1.5; }
+.info svg { flex-shrink: 0; margin-top: 2px; color: var(--text-3); }
+.info code { font-size: .8rem; }
+.preview { margin: 0; padding: 14px 16px; border-radius: 11px; background: var(--surface-2); border: 1px dashed var(--border-strong); font-size: .84rem; line-height: 1.6; color: var(--text-2); white-space: pre-wrap; }
+.usage-meter { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; margin-top: 8px; }
+.usage-meter span { display: block; height: 100%; background: var(--text); border-radius: 999px; }
+.usage-meter.near span { background: var(--warn); } .usage-meter.over span { background: var(--bad); }
+
+/* Save bar */
+.savebar { position: sticky; bottom: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px; padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(8px); box-shadow: var(--shadow); }
+.savebar .state { font-size: .86rem; color: var(--text-2); }
+.savebar.dirty .state { color: var(--warn); font-weight: 600; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Settings</h1>
+    <p>How {{ organization.name }}'s assistant looks, answers and behaves · <code>{{ organization.slug }}</code></p>
+  </div>
+</div>
+
+<div class="settings-layout">
+  <nav class="settings-nav" aria-label="Settings sections" id="settings-nav">
+    <a href="#general">{% icon "building" 16 %} General<span class="dot"></span></a>
+    <a href="#chat">{% icon "chat" 16 %} Chat experience<span class="dot"></span></a>
+    <a href="#answers">{% icon "sparkles" 16 %} Answers<span class="dot"></span></a>
+    <a href="#model">{% icon "zap" 16 %} AI model<span class="dot"></span></a>
+    <a href="#retrieval">{% icon "search" 16 %} Retrieval &amp; quality<span class="dot"></span></a>
+    <a href="#usage">{% icon "gauge" 16 %} Usage &amp; performance<span class="dot"></span></a>
+  </nav>
+
+  <form method="post" id="settings-form" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="card" style="border-color:var(--bad);color:var(--bad)">{{ form.non_field_errors }}</div>{% endif %}
+
+    <section class="card ssection" id="general">
+      <header><h2>{% icon "building" 18 %} General</h2><p>The basics people see across the workspace.</p></header>
+      <div class="body two">
+        {% include "tenants/partials/field.html" with field=form.name %}
+        {% include "tenants/partials/field.html" with field=form.assistant_name %}
+      </div>
+    </section>
+
+    <section class="card ssection" id="chat">
+      <header><h2>{% icon "chat" 18 %} Chat experience</h2><p>What people see when they open a new chat.</p></header>
+      <div class="body">
+        {% include "tenants/partials/field.html" with field=form.welcome_message %}
+        {% include "tenants/partials/field.html" with field=form.suggested_questions hint="One per line" %}
+        <label class="switch-row">
+          <span class="txt"><b>{{ form.show_sources.label }}</b><span>{{ form.show_sources.help_text }}</span></span>
+          <span class="switch">{{ form.show_sources }}<i></i></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="card ssection" id="answers">
+      <header><h2>{% icon "sparkles" 18 %} Answers</h2><p>How the assistant writes its replies. Changes apply to the next question.</p></header>
+      <div class="body">
+        {% for field in form %}{% if field.name == "answer_length" or field.name == "creativity" or field.name == "knowledge_scope" %}
+          <div class="opt-group sfield{% if field.errors %} has-error{% endif %}">
+            <div class="sfield-label"><label>{% if field.name == "knowledge_scope" %}Knowledge scope{% else %}{{ field.label }}{% endif %}</label></div>
+            <div class="opts">
+              {% for opt in field %}
+                <label class="opt">{{ opt.tag }}<b>{{ opt.choice_label }}</b><span>{{ choice_help|get:field.name|get:opt.data.value }}</span></label>
+              {% endfor %}
+            </div>
+            {% for e in field.errors %}<p class="sfield-error">{{ e }}</p>{% endfor %}
+          </div>
+        {% endif %}{% endfor %}
+        {% include "tenants/partials/field.html" with field=form.response_language %}
+      </div>
+    </section>
+
+    <section class="card ssection" id="model">
+      <header><h2>{% icon "zap" 18 %} AI model</h2><p>Which model writes answers, and the assistant's own instructions.</p></header>
+      <div class="body">
+        <div class="info">{% icon "sparkles" 16 %}<span>Answering with <code>{{ organization.effective_model }}</code>{% if not organization.llm_model %} (platform default){% endif %}. Leave the model blank to follow the platform default (<code>{{ default_model }}</code>), which moves to Google's current Flash model automatically.</span></div>
+        <label class="switch-row">
+          <span class="txt"><b>{{ form.use_external_ai.label }}</b><span>{{ form.use_external_ai.help_text }}</span></span>
+          <span class="switch">{{ form.use_external_ai }}<i></i></span>
+        </label>
+        <div class="info">{% icon "shield" 16 %}<span><b>Answer order.</b> {% for p in ai_chain %}{{ forloop.counter }}. {{ p.name }}{% if not p.is_external %} (on your server){% endif %} → {% endfor %}{{ ai_chain|length|add:1 }}. quotes from your documents. If one is down or out of quota, the next takes over, so people always get an answer with its sources. The platform team chooses the providers.</span></div>
+        {% include "tenants/partials/field.html" with field=form.llm_model %}
+        {% include "tenants/partials/field.html" with field=form.system_prompt %}
+        <div>
+          <div class="sfield-label"><label>What the assistant is told</label><span class="faint small">Saved settings · read-only</span></div>
+          <p class="preview">{{ instructions_preview }}</p>
+          <p class="sfield-help">Sent before the document passages with every question. Save to update this preview.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card ssection" id="retrieval">
+      <header><h2>{% icon "search" 18 %} Retrieval &amp; quality</h2><p>How much the assistant reads, remembers, and when an answer counts as a knowledge gap.</p></header>
+      <div class="body">
+        <div class="three">
+          {% include "tenants/partials/field.html" with field=form.top_k %}
+          {% include "tenants/partials/field.html" with field=form.history_turns %}
+          {% include "tenants/partials/field.html" with field=form.gap_threshold %}
+        </div>
+        <div class="info">{% icon "help" 16 %}<span>Platform defaults: {{ platform_defaults.top_k }} passages, {{ platform_defaults.history_turns }} turns of memory, gap threshold {{ platform_defaults.gap_threshold }}. Raising the threshold flags more answers on the <a href="{% url 'chat:gaps' %}">Knowledge gaps</a> page; lowering it flags fewer.</span></div>
+      </div>
+    </section>
+
+    <section class="card ssection" id="usage">
+      <header><h2>{% icon "gauge" 18 %} Usage &amp; performance</h2><p>Limits and speed.</p></header>
+      <div class="body">
+        <div class="two">
+          {% include "tenants/partials/field.html" with field=form.monthly_query_limit %}
+          <div>
+            <div class="sfield-label"><label>This month</label></div>
+            <div style="font-size:1.5rem;font-weight:650;letter-spacing:-.02em">{{ queries_this_month }}{% if organization.monthly_query_limit %}<span class="faint" style="font-size:1rem;font-weight:500"> / {{ organization.monthly_query_limit }}</span>{% endif %}</div>
+            {% if organization.monthly_query_limit %}
+              {% widthratio queries_this_month organization.monthly_query_limit 100 as used_pct %}
+              <div class="usage-meter{% if used_pct|add:0 >= 100 %} over{% elif used_pct|add:0 >= 80 %} near{% endif %}"><span style="width:{% if used_pct|add:0 > 100 %}100{% else %}{{ used_pct }}{% endif %}%"></span></div>
+              <p class="sfield-help">{{ used_pct }}% of the monthly limit used.</p>
+            {% else %}<p class="sfield-help">questions asked · no limit set</p>{% endif %}
+          </div>
+        </div>
+        <label class="switch-row">
+          <span class="txt"><b>{{ form.cache_answers.label }}</b><span>{{ form.cache_answers.help_text }} Changing any answer setting above starts fresh automatically.</span></span>
+          <span class="switch">{{ form.cache_answers }}<i></i></span>
+        </label>
+      </div>
+    </section>
+
+    <div class="savebar" id="savebar">
+      <span class="state" id="save-state">All changes saved</span>
+      <span style="display:flex;gap:8px">
+        <a class="btn" href="{% url 'tenants:settings' %}" id="discard" hidden>Discard</a>
+        <button class="btn btn-primary" type="submit">Save changes</button>
+      </span>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+(function () {
+  const form = document.getElementById("settings-form");
+  const bar = document.getElementById("savebar");
+  const state = document.getElementById("save-state");
+  const discard = document.getElementById("discard");
+  const initial = new URLSearchParams(new FormData(form)).toString();
+  function check() {
+    const dirty = new URLSearchParams(new FormData(form)).toString() !== initial;
+    bar.classList.toggle("dirty", dirty);
+    state.textContent = dirty ? "Unsaved changes" : "All changes saved";
+    discard.hidden = !dirty;
+  }
+  form.addEventListener("input", check);
+  form.addEventListener("change", check);
+  let submitting = false;
+  form.addEventListener("submit", () => { submitting = true; });
+  window.addEventListener("beforeunload", e => { if (!submitting && bar.classList.contains("dirty")) { e.preventDefault(); e.returnValue = ""; } });
+
+  // Tabs: one section at a time. The open tab lives in the URL hash, so it survives a refresh,
+  // and the form posts to that hash so the same tab is open again after saving.
+  const nav = document.getElementById("settings-nav");
+  const links = [...nav.querySelectorAll("a")];
+  const sections = links.map(a => document.querySelector(a.getAttribute("href")));
+  const sectionState = sections.map(snapshot);
+  form.classList.add("tabbed");
+  nav.setAttribute("role", "tablist");
+  links.forEach((a, i) => {
+    a.setAttribute("role", "tab");
+    a.setAttribute("aria-controls", sections[i].id);
+    sections[i].setAttribute("role", "tabpanel");
+    if (sections[i].querySelector(".has-error")) a.classList.add("bad");
+    a.addEventListener("click", e => { e.preventDefault(); open(i, true); });
+  });
+
+  function snapshot(section) {
+    return [...section.querySelectorAll("input, textarea, select")]
+      .map(el => el.name + "=" + (el.type === "checkbox" || el.type === "radio" ? el.checked : el.value)).join("&");
+  }
+  function open(i, push) {
+    links.forEach((a, j) => { a.classList.toggle("on", i === j); a.setAttribute("aria-selected", i === j); });
+    sections.forEach((s, j) => s.classList.toggle("active", i === j));
+    const hash = "#" + sections[i].id;
+    if (push && location.hash !== hash) history.replaceState(null, "", hash);
+    form.action = hash;
+    discard.href = location.pathname + hash;
+    if (nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: links[i].offsetLeft - 16, behavior: "smooth" });
+    if (push) window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function markChanged() {
+    sections.forEach((s, i) => links[i].classList.toggle("changed", snapshot(s) !== sectionState[i]));
+  }
+  form.addEventListener("input", markChanged);
+  form.addEventListener("change", markChanged);
+
+  const firstError = sections.findIndex(s => s.querySelector(".has-error"));
+  const fromHash = sections.findIndex(s => "#" + s.id === location.hash);
+  open(firstError >= 0 ? firstError : Math.max(fromHash, 0), false);
+  window.addEventListener("hashchange", () => {
+    const i = sections.findIndex(s => "#" + s.id === location.hash);
+    if (i >= 0) open(i, false);
+  });
+})();
+</script>
+{% endblock %}

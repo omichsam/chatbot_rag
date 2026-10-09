@@ -1,0 +1,14 @@
+{% extends "auth_base.html" %}
+{% load ui %}
+{% block title %}Back soon · DocAssist{% endblock %}
+{% block auth %}
+<div style="text-align:center">
+  <div class="stat-icon" style="margin:6px auto 14px;width:52px;height:52px;border-radius:14px;background:var(--warn-soft);color:var(--warn)">{% icon "clock" 24 %}</div>
+  <h1 style="font-size:1.4rem;margin:0 0 8px">We'll be back soon</h1>
+  <p class="muted" style="margin:0 0 20px">{{ message }}</p>
+  <a class="btn" href="">Try again</a>
+  {% if user.is_authenticated %}
+    <form method="post" action="{% url 'logout' %}" class="inline" style="margin-left:6px">{% csrf_token %}<button class="btn btn-ghost">Sign out</button></form>
+  {% endif %}
+</div>
+{% endblock %}

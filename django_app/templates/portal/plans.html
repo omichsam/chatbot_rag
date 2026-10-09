@@ -1,0 +1,83 @@
+{% extends "portal/base.html" %}
+{% load humanize ui %}
+{% block title %}Plans · Platform Console{% endblock %}
+{% block crumb %}Plans{% endblock %}
+{% block style %}
+.plans { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-bottom: 18px; }
+.plan { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.plan h2 { margin: 0; display: flex; justify-content: space-between; align-items: center; }
+.plan dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: .9rem; }
+.plan dt { color: var(--text-2); } .plan dd { margin: 0; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.plan details summary { cursor: pointer; font-size: .86rem; color: var(--text-2); }
+.plan form.form > div { margin-bottom: 10px; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Plans</h1>
+    <p>Packages of limits applied to organizations in one click. {{ custom_count }} organization{{ custom_count|pluralize }} use custom limits.</p>
+  </div>
+</div>
+
+<div class="plans">
+  {% for plan, count in rows %}
+    <div class="card plan">
+      <h2>{{ plan.name }} <span class="badge plain">{{ count }} org{{ count|pluralize }}</span></h2>
+      {% if plan.description %}<p class="small muted" style="margin:0">{{ plan.description }}</p>{% endif %}
+      <dl>
+        <dt>Questions per month</dt><dd>{% if plan.monthly_query_limit %}{{ plan.monthly_query_limit|intcomma }}{% else %}Unlimited{% endif %}</dd>
+        <dt>Documents</dt><dd>{% if plan.max_documents %}{{ plan.max_documents|intcomma }}{% else %}Unlimited{% endif %}</dd>
+        <dt>Members</dt><dd>{% if plan.max_members %}{{ plan.max_members|intcomma }}{% else %}Unlimited{% endif %}</dd>
+        <dt>Cloud AI providers</dt><dd>{% if plan.allow_external_ai %}Allowed{% else %}Local only{% endif %}</dd>
+      </dl>
+      {% if portal_role == 'owner' %}
+      <details>
+        <summary>Edit</summary>
+        <form method="post" class="form" style="margin-top:10px">
+          {% csrf_token %}<input type="hidden" name="plan" value="{{ plan.pk }}">
+          <div><label>Name</label><input type="text" name="name" value="{{ plan.name }}" required></div>
+          <div><label>Description</label><input type="text" name="description" value="{{ plan.description }}"></div>
+          <div><label>Questions per month (0 = unlimited)</label><input type="number" min="0" name="monthly_query_limit" value="{{ plan.monthly_query_limit }}"></div>
+          <div><label>Documents (0 = unlimited)</label><input type="number" min="0" name="max_documents" value="{{ plan.max_documents }}"></div>
+          <div><label>Members (0 = unlimited)</label><input type="number" min="0" name="max_members" value="{{ plan.max_members }}"></div>
+          <div><label class="check" style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="allow_external_ai" {% if plan.allow_external_ai %}checked{% endif %}> Cloud AI providers allowed</label></div>
+          <div><label>Order</label><input type="number" min="0" name="sort_order" value="{{ plan.sort_order }}"></div>
+          {% if count %}<div><label class="check" style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="apply_limits" checked> Apply the question limit to its {{ count }} organization{{ count|pluralize }} now</label></div>{% endif %}
+          <div style="display:flex;gap:8px"><button class="btn btn-primary" type="submit">Save</button></div>
+        </form>
+        {% if not count %}
+          <form method="post" data-confirm="Remove the {{ plan.name }} plan?">{% csrf_token %}<input type="hidden" name="plan" value="{{ plan.pk }}"><input type="hidden" name="action" value="delete"><button class="btn btn-sm btn-ghost btn-danger" type="submit">Remove plan</button></form>
+        {% endif %}
+      </details>
+      {% endif %}
+    </div>
+  {% endfor %}
+
+  {% if portal_role == 'owner' %}
+  <div class="card plan" style="border-style:dashed">
+    <h2>New plan</h2>
+    <form method="post" class="form">
+      {% csrf_token %}
+      <div><label>Name</label><input type="text" name="name" required placeholder="e.g. Education"></div>
+      <div><label>Description</label><input type="text" name="description"></div>
+      <div><label>Questions per month (0 = unlimited)</label><input type="number" min="0" name="monthly_query_limit" value="1000"></div>
+      <div><label>Documents (0 = unlimited)</label><input type="number" min="0" name="max_documents" value="50"></div>
+      <div><label>Members (0 = unlimited)</label><input type="number" min="0" name="max_members" value="20"></div>
+      <div><label class="check" style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="allow_external_ai" checked> Cloud AI providers allowed</label></div>
+      <div><label>Order</label><input type="number" min="0" name="sort_order" value="10"></div>
+      <button class="btn btn-primary" type="submit">{% icon "plus" 15 %} Add plan</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<details class="howto">
+  <summary>{% icon "help" 16 %} How plans work</summary>
+  <div class="body"><ul>
+    <li>Pick a plan on an organization's page. It sets the <strong>monthly question limit</strong> right away; the <strong>document</strong> and <strong>member</strong> caps are checked when admins upload or add people.</li>
+    <li><strong>Cloud AI providers allowed</strong> off: the organization only uses local providers (Ollama), then quoting, whatever its own settings say.</li>
+    <li>An organization's own limit can still be edited; applying the plan again resets it.</li>
+    <li>A plan in use can't be removed. Move its organizations to another plan first.</li>
+  </ul></div>
+</details>
+{% endblock %}

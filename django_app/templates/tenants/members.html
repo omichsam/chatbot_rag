@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Members · {{ organization.name }}{% endblock %}
+{% block crumb %}Members{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Members</h1>
+    <p>Owners and admins manage documents, keys and people. Members can chat and browse documents.</p>
+  </div>
+</div>
+
+<div class="card flush">
+  <div class="table-wrap">
+  <table data-table data-label="members">
+    <thead><tr><th>Person</th><th>Role</th><th>Joined</th><th></th></tr></thead>
+    <tbody>
+    {% for m in memberships %}
+      <tr>
+        <td>
+          <div class="file-cell">
+            <span class="avatar">{{ m.user.username|initials }}</span>
+            <span><strong>{{ m.user.username }}{% if m.pk == membership.pk %} <span class="badge accent plain">You</span>{% endif %}</strong>
+              {% if m.user.email %}<span class="small faint">{{ m.user.email }}</span>{% endif %}</span>
+          </div>
+        </td>
+        <td>
+          {% if m.pk == membership.pk or m.role == 'owner' and not is_owner %}
+            <span class="badge plain {% if m.role == 'owner' %}accent{% endif %}">{{ m.get_role_display }}</span>
+          {% else %}
+            <form method="post" action="{% url 'tenants:update_member' m.pk %}" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="role">
+              <select name="role" onchange="this.form.submit()" aria-label="Role for {{ m.user.username }}" style="width:auto;padding:6px 10px">
+                {% for value, label in roles %}
+                  {% if value != 'owner' or is_owner %}
+                    <option value="{{ value }}" {% if value == m.role %}selected{% endif %}>{{ label }}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+            </form>
+          {% endif %}
+        </td>
+        <td class="small muted" data-sort="{{ m.created_at|date:'c' }}">{{ m.created_at|date:"M j, Y" }}</td>
+        <td><div class="actions">
+          {% if m.pk != membership.pk and m.role != 'owner' or m.pk != membership.pk and is_owner %}
+            <form method="post" action="{% url 'tenants:update_member' m.pk %}" class="inline" data-confirm="Remove {{ m.user.username }} from {{ organization.name }}?">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="remove">
+              <button class="btn btn-sm btn-danger">Remove</button>
+            </form>
+          {% endif %}
+        </div></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Add someone</h2>
+  <p class="small muted">Enter an existing username to add them, or a new username and a password to create their account.</p>
+  <form method="post" class="form" style="max-width:520px">
+    {% csrf_token %}
+    {{ form.as_div }}
+    <button class="btn btn-primary" type="submit">{% icon "plus" 16 %} Add member</button>
+  </form>
+</div>
+{% endblock %}

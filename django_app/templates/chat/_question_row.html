@@ -1,0 +1,26 @@
+{% load humanize ui %}<details class="qrow">
+  <summary>
+    <span class="q-when" title="{{ r.created_at }}">{{ r.created_at|naturaltime }}</span>
+    <span class="src {{ r.source }}" title="{% if r.source == 'web' %}Asked in the web app by {{ r.source_name }}{% elif r.source == 'test' %}Test request from the Developer playground with key {{ r.source_name }}{% else %}Asked through the API with key {{ r.source_name }}{% endif %}">
+      {% if r.source == 'web' %}{% icon "user" 13 %} Web{% elif r.source == 'test' %}{% icon "code" 13 %} Test{% else %}{% icon "key" 13 %} API{% endif %}
+      <em>{{ r.source_name }}</em>
+    </span>
+    <span class="q-text">{{ r.content }}</span>
+    <span class="q-tags">
+      {% if r.topic__name %}<span class="tag-topic">{{ r.topic__name }}</span>{% elif r.intent != 'document' %}<span class="tag-intent">{{ r.intent_label }}</span>{% endif %}
+      <span class="out {{ r.outcome }}">{% if r.outcome == 'answered' %}Answered{% elif r.outcome == 'weak' %}Weak match{% elif r.outcome == 'disliked' %}👎 Disliked{% else %}Failed{% endif %}</span>
+    </span>
+  </summary>
+  <div class="q-detail">
+    <div class="q-full"><strong>Question</strong><p>{{ r.content }}</p></div>
+    <div class="q-answer"><strong>Answer</strong><p>{{ r.reply_content|default:"(no answer recorded)" }}</p></div>
+    <div class="q-meta">
+      <span>Type: {{ r.intent_label }}</span>
+      <span>Topic: {{ r.topic__name|default:"–" }}</span>
+      {% if r.reply_latency %}<span>Answer time: {{ r.reply_latency|floatformat:0|intcomma }} ms</span>{% endif %}
+      {% if r.reply_score is not None %}<span>Best match: {{ r.reply_score|floatformat:2 }}</span>{% endif %}
+      {% if r.reply_comment %}<span>Comment: “{{ r.reply_comment }}”</span>{% endif %}
+    </div>
+    {% if r.reply_sources %}<div class="q-sources">{% for s in r.reply_sources %}<span class="chip">{% icon "file" 12 %} {{ s.filename }} · p.{{ s.page }}</span>{% endfor %}</div>{% endif %}
+  </div>
+</details>

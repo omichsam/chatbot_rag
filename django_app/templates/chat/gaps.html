@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load humanize ui %}
+{% block title %}Knowledge gaps · {{ organization.name }}{% endblock %}
+{% block crumb %}Knowledge gaps{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Knowledge gaps</h1>
+    <p>Questions your documents couldn't answer well. Upload a document that covers them, then mark them resolved.</p>
+  </div>
+  {% if membership.is_admin %}<a class="btn btn-primary" href="{% url 'documents:list' %}">{% icon "upload" 16 %} Upload documents</a>{% endif %}
+</div>
+
+<div class="card flush">
+  {% if groups %}
+  <div class="table-wrap">
+  <table data-table data-label="questions">
+    <thead><tr><th>Question</th><th>Why it's listed</th><th class="num">Asked</th><th>Last asked</th><th></th></tr></thead>
+    <tbody>
+    {% for g in groups %}
+      <tr>
+        <td style="min-width:260px"><strong>{{ g.question }}</strong><br><span class="small faint">by {{ g.askers|join:", " }}</span></td>
+        <td>{% for r in g.reasons %}<span class="badge plain {% if 'not helpful' in r %}bad{% else %}warn{% endif %}" style="margin:2px 4px 2px 0">{{ r }}</span>{% empty %}<span class="faint small">–</span>{% endfor %}</td>
+        <td class="num"><strong>{{ g.count }}×</strong></td>
+        <td class="small muted" data-sort="{{ g.last|date:'c' }}">{{ g.last|naturaltime }}</td>
+        <td><div class="actions">
+          <form method="post" action="{% url 'chat:resolve_gap' %}" class="inline">
+            {% csrf_token %}
+            {% for id in g.ids %}<input type="hidden" name="ids" value="{{ id }}">{% endfor %}
+            <button class="btn btn-sm">{% icon "check" 15 %} Resolved</button>
+          </form>
+        </div></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="stat-icon">{% icon "target" 24 %}</div>
+      <h3>No gaps found</h3>
+      <p>Every recent question matched your documents well. Nice!</p>
+    </div>
+  {% endif %}
+</div>
+<p class="small faint">A question is listed when no document matched, its best matching passage scored below {{ threshold|floatformat:2 }} similarity, or someone rated the answer 👎.</p>
+{% endblock %}

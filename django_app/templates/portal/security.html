@@ -1,0 +1,92 @@
+{% extends "portal/base.html" %}
+{% load humanize ui %}
+{% block title %}Security centre · Platform Console{% endblock %}
+{% block crumb %}Security centre{% endblock %}
+{% block style %}
+.sec-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+@media (max-width: 1000px) { .sec-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sec-kpis .card { margin: 0; padding: 16px 18px; }
+.sec-kpis .v { font-size: 1.7rem; font-weight: 650; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.sec-kpis .l { font-size: .84rem; color: var(--text-2); }
+.flag { display: inline-block; margin: 0 4px 4px 0; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Security centre</h1>
+    <p>Who can run the platform, how sign-ins are going, and which API keys need attention.</p>
+  </div>
+  <a class="btn" href="{% url 'portal:two_factor' %}">{% icon "lock" 16 %} Your two-factor sign-in</a>
+</div>
+
+<div class="sec-kpis">
+  <div class="card"><div class="l">Two-factor for the console</div><div class="v {% if require_2fa %}tone-good{% else %}tone-warn{% endif %}" style="font-size:1.3rem">{% if require_2fa %}Required{% else %}Optional{% endif %}</div>
+    {% if portal_role == 'owner' %}
+      <form method="post" action="{% url 'portal:security_action' %}"
+            data-confirm-title="{% if require_2fa %}Make two-factor optional?{% else %}Require two-factor sign-in?{% endif %}"
+            data-confirm="{% if require_2fa %}Console users will be able to sign in with just a password.{% else %}Everyone with console access must set up an authenticator app before using the console. You've set yours up already.{% endif %}"
+            data-confirm-label="{% if require_2fa %}Make optional{% else %}Require it{% endif %}" data-confirm-tone="neutral">
+        {% csrf_token %}<input type="hidden" name="action" value="{% if require_2fa %}require_2fa_off{% else %}require_2fa_on{% endif %}">
+        <button class="btn btn-sm {% if not require_2fa %}btn-primary{% endif %}">{% if require_2fa %}Make optional{% else %}Require it{% endif %}</button>
+      </form>
+    {% endif %}
+  </div>
+  <div class="card"><div class="l">Failed sign-ins · 30 days</div><div class="v {% if failed_30d > 20 %}tone-bad{% endif %}">{{ failed_30d }}</div></div>
+  <div class="card"><div class="l">Sign-in pauses · 30 days</div><div class="v {% if lockouts_30d %}tone-warn{% endif %}">{{ lockouts_30d }}</div></div>
+  <div class="card"><div class="l">API keys needing attention</div><div class="v {% if keys_flagged %}tone-warn{% endif %}">{{ keys_flagged }}<small class="faint" style="font-size:1rem"> / {{ keys|length }}</small></div></div>
+</div>
+
+<div class="card flush">
+  <div class="card-head" style="padding:18px 20px 0"><h2 style="margin:0">Console access</h2><a class="small" href="{% url 'portal:users' %}?filter=staff">Manage in Users →</a></div>
+  <div class="table-wrap" style="margin-top:10px"><table data-table data-label="people">
+    <thead><tr><th>Person</th><th>Console role</th><th>Two-factor</th><th>Last sign-in</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for u, role, has_2fa in staff %}
+        <tr>
+          <td><strong>{{ u.username }}</strong>{% if u.pk == user.pk %} <span class="badge accent plain">You</span>{% endif %}<div class="small faint">{{ u.email|default:"no email" }}</div></td>
+          <td>{% if role == 'owner' %}<span class="badge accent">Owner (superadmin)</span>{% else %}<span class="badge">{{ role|capfirst }}</span>{% endif %}</td>
+          <td>{% if has_2fa %}<span class="badge good">On</span>{% else %}<span class="badge {% if require_2fa %}bad{% else %}warn{% endif %}">Off</span>{% endif %}</td>
+          <td class="small muted" data-sort="{{ u.last_login|date:'c' }}">{{ u.last_login|naturaltime|default:"never" }}</td>
+          <td>{% if u.is_active %}<span class="badge good">Active</span>{% else %}<span class="badge bad">Deactivated</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card flush">
+  <div class="card-head" style="padding:18px 20px 0"><div><h2 style="margin:0">API keys across all organizations</h2><div class="small faint" style="margin-top:3px">Never used, unused for 90+ days, or older than 180 days (time to rotate) are flagged</div></div></div>
+  <div class="table-wrap" style="margin-top:10px"><table data-table data-label="API keys">
+    <thead><tr><th>Key</th><th>Organization</th><th>Created</th><th>Last used</th><th>Attention</th><th data-nosort></th></tr></thead>
+    <tbody>
+      {% for r in keys %}
+        <tr>
+          <td><strong>{{ r.key.name }}</strong><div class="small faint mono">{{ r.key.prefix }}…</div></td>
+          <td><a href="{% url 'portal:organization' r.key.organization_id %}" style="color:var(--text)">{{ r.key.organization.name }}</a></td>
+          <td class="small muted" data-sort="{{ r.key.created_at|date:'c' }}">{{ r.key.created_at|date:"j M Y" }}</td>
+          <td class="small muted" data-sort="{{ r.key.last_used_at|date:'c' }}">{{ r.key.last_used_at|naturaltime|default:"never" }}</td>
+          <td>{% for f in r.flags %}<span class="badge warn plain flag">{{ f }}</span>{% empty %}<span class="faint small">–</span>{% endfor %}</td>
+          <td>{% if portal_role == 'owner' %}<form method="post" action="{% url 'portal:security_action' %}" class="inline" data-confirm="Revoke {{ r.key.name }} of {{ r.key.organization.name }}? Apps using it stop working.">{% csrf_token %}<input type="hidden" name="action" value="revoke_key"><input type="hidden" name="key" value="{{ r.key.pk }}"><button class="btn btn-sm btn-danger">Revoke</button></form>{% endif %}</td>
+        </tr>
+      {% empty %}<tr><td colspan="6" class="muted">No active API keys.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card flush">
+  <div class="card-head" style="padding:18px 20px 0"><h2 style="margin:0">Sign-in events · 30 days</h2><a class="small" href="{% url 'portal:audit' %}?action=security.">In the audit log →</a></div>
+  <div class="table-wrap" style="margin-top:10px"><table data-table data-label="events">
+    <thead><tr><th>When</th><th>Event</th><th>Username tried</th><th>Detail</th></tr></thead>
+    <tbody>
+      {% for e in events %}
+        <tr>
+          <td class="small" data-sort="{{ e.created_at|date:'c' }}">{{ e.created_at|naturaltime }}</td>
+          <td>{% if e.action == 'security.lockout' %}<span class="badge bad">Paused</span>{% else %}<span class="badge warn">Failed sign-in</span>{% endif %}</td>
+          <td><strong>{{ e.target }}</strong></td>
+          <td class="small muted">{{ e.detail }}</td>
+        </tr>
+      {% empty %}<tr><td colspan="4" class="muted">No failed sign-ins in the last 30 days.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

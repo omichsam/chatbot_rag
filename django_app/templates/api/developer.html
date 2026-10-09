@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Developer · {{ organization.name }}{% endblock %}
+{% block crumb %}Developer{% endblock %}
+{% block style %}
+.dev-grid { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; }
+@media (max-width: 1100px) { .dev-grid { grid-template-columns: minmax(0, 1fr); } }
+.dev-grid > div > .card { margin-bottom: 22px; }
+.step { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: .72rem; font-weight: 700; margin-right: 8px; }
+.key-row { display: flex; gap: 8px; align-items: stretch; }
+.key-row .pw-wrap { flex: 1; }
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 44px; font-family: "Geist Mono", ui-monospace, monospace; font-size: .88rem; }
+.pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 6px; border: 0; background: none; color: var(--text-2); cursor: pointer; border-radius: 6px; }
+.endpoints { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ep { display: flex; gap: 10px; align-items: center; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); cursor: pointer; text-align: left; font: inherit; color: var(--text); }
+.ep:hover { border-color: var(--border-strong); }
+.ep.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.ep .path { font-family: "Geist Mono", ui-monospace, monospace; font-size: .82rem; color: var(--text-2); display: block; }
+.method { display: inline-block; min-width: 44px; text-align: center; padding: 2px 6px; border-radius: 6px; font: 600 .7rem/1.4 "Geist Mono", ui-monospace, monospace; letter-spacing: .04em; }
+.method.get { background: var(--good-soft); color: var(--good); }
+.method.post { background: var(--warn-soft); color: var(--warn); }
+.url-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); font-family: "Geist Mono", ui-monospace, monospace; font-size: .85rem; overflow-x: auto; white-space: nowrap; }
+.resp-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.status { font: 600 .82rem "Geist Mono", ui-monospace, monospace; padding: 3px 10px; border-radius: 999px; }
+.status.ok { background: var(--good-soft); color: var(--good); }
+.status.err { background: var(--bad-soft); color: var(--bad); }
+.json { margin: 12px 0 0; max-height: 440px; overflow: auto; font: .82rem/1.55 "Geist Mono", ui-monospace, monospace; white-space: pre-wrap; word-break: break-word; }
+.json .k { color: var(--text); font-weight: 600; }
+.json .s { color: var(--good); }
+.json .n { color: #b45309; }
+.json .b { color: #7c3aed; }
+.snip-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.snip-tabs button { padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; background: none; font: inherit; font-size: .88rem; color: var(--text-2); cursor: pointer; margin-bottom: -1px; }
+.snip-tabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.snippet { position: relative; }
+.snippet pre { margin: 0; font-size: .8rem; max-height: 320px; padding-top: 46px; }
+.snippet .copy { position: absolute; top: 8px; right: 8px; }
+.ref dt { margin-top: 14px; display: flex; gap: 8px; align-items: center; font-family: "Geist Mono", ui-monospace, monospace; font-size: .86rem; font-weight: 600; }
+.ref dd { margin: 4px 0 0; color: var(--text-2); font-size: .88rem; }
+.codes td { padding: 8px 10px; font-size: .86rem; }
+.history { list-style: none; margin: 0; padding: 0; }
+.history li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: .85rem; cursor: pointer; }
+.history li:last-child { border-bottom: 0; }
+.history .q { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Developer</h1>
+    <p>Try the {{ organization.name }} API right here: send real requests, inspect responses, and copy working code.</p>
+  </div>
+  <div class="actions">
+    {% if membership.is_admin %}<a class="btn" href="{% url 'keys:list' %}">{% icon "key" 16 %} Manage API keys</a>{% endif %}
+    <a class="btn" href="{% url 'chat:help' %}">{% icon "help" 16 %} Help</a>
+  </div>
+</div>
+
+<div class="dev-grid">
+  <div>
+    <div class="card">
+      <h2><span class="step">1</span>Your API key</h2>
+      <div class="key-row">
+        <div class="pw-wrap">
+          <input type="password" id="api-key" placeholder="sk_…" autocomplete="off" spellcheck="false" aria-label="API key">
+          <button type="button" class="pw-toggle" id="key-eye" aria-label="Show key">{% icon "eye" 18 %}</button>
+        </div>
+        <button class="btn" type="button" id="check-key">{% icon "check" 16 %} Check</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px">
+        <label class="check small" style="display:inline-flex;gap:8px;align-items:center;font-weight:400;margin:0;color:var(--text-2)">
+          <input type="checkbox" id="remember-key"> Remember on this device
+        </label>
+        <span class="small faint" id="key-status">
+          {% if active_keys %}{{ active_keys }} active key{{ active_keys|pluralize }} in {{ organization.name }}.{% else %}No active keys yet.{% endif %}
+          {% if membership.is_admin %}<a href="{% url 'keys:list' %}">Create one</a>{% else %}Ask an admin for one.{% endif %}
+        </span>
+      </div>
+      <p class="small faint" style="margin:10px 0 0">The key stays in your browser and is only sent with your test requests. Each test is a real request: it counts toward your usage and appears in analytics marked <strong>Test</strong>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="step">2</span>Choose an endpoint</h2>
+      <div class="endpoints" role="radiogroup" aria-label="Endpoint">
+        <button type="button" class="ep on" data-ep="chat"><span class="method post">POST</span><span><strong>Ask a question</strong><span class="path">/chat</span></span></button>
+        <button type="button" class="ep" data-ep="documents"><span class="method get">GET</span><span><strong>List documents</strong><span class="path">/documents</span></span></button>
+        <button type="button" class="ep" data-ep="validate-key"><span class="method get">GET</span><span><strong>Validate key</strong><span class="path">/validate-key</span></span></button>
+        <button type="button" class="ep" data-ep="health"><span class="method get">GET</span><span><strong>Health check</strong><span class="path">/health</span></span></button>
+      </div>
+
+      <div id="chat-fields" style="margin-top:18px" class="form">
+        <div>
+          <label for="question">Question</label>
+          <textarea id="question" rows="3" placeholder="What is Huduma WhiteBox?">What is Huduma WhiteBox?</textarea>
+        </div>
+        <div>
+          <label for="session-id">Session ID <span class="faint" style="font-weight:400">(optional, continues a conversation)</span></label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="session-id" placeholder="Leave empty to start a new conversation" spellcheck="false" style="font-family:'Geist Mono',ui-monospace,monospace;font-size:.85rem">
+            <button class="btn" type="button" id="new-session" title="Start a new conversation">{% icon "plus" 16 %} New</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="url-bar" style="margin-top:6px"><span class="method post" id="m-badge">POST</span><span id="url-text"></span></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:14px">
+        <button class="btn btn-primary" type="button" id="send">{% icon "play" 15 %} Send request</button>
+      </div>
+    </div>
+
+    <div class="card" id="response-card">
+      <div class="card-head">
+        <h2 style="margin:0"><span class="step">3</span>Response</h2>
+        <div class="resp-meta" id="resp-meta"><span class="faint small">Send a request to see the result.</span></div>
+      </div>
+      <pre class="json" id="response" hidden></pre>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h2 style="margin:0">{% icon "code" 18 %} Code</h2><span class="small faint">updates as you type</span></div>
+      <div class="snip-tabs" role="tablist">
+        <button type="button" class="on" data-lang="curl">cURL</button>
+        <button type="button" data-lang="powershell">PowerShell</button>
+        <button type="button" data-lang="python">Python</button>
+        <button type="button" data-lang="js">JavaScript</button>
+      </div>
+      <div class="snippet">
+        <pre><code id="snippet"></code></pre>
+        <button class="btn btn-sm copy" type="button" id="copy-snippet">{% icon "copy" 14 %} Copy</button>
+      </div>
+      <p class="small faint" style="margin:10px 0 0">The key is shown as <code>sk_your_key</code> unless you tick “include my key”.
+        <label style="display:inline-flex;gap:6px;align-items:center;font-weight:400;margin:0 0 0 6px"><input type="checkbox" id="include-key"> include my key</label></p>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2 style="margin:0">{% icon "history" 18 %} Recent requests</h2><button class="btn btn-sm btn-ghost" type="button" id="clear-history">Clear</button></div>
+      <ul class="history" id="history"><li class="faint small" style="cursor:default">Nothing yet.</li></ul>
+    </div>
+
+    <div class="card ref">
+      <h2>Reference</h2>
+      <p class="small muted" style="margin:0">Base URL <code>{{ api_base }}</code> · send <code>Authorization: Bearer &lt;key&gt;</code> (or <code>X-API-Key</code>).</p>
+      <dl>
+        <dt><span class="method post">POST</span>/chat</dt>
+        <dd>Body <code>{"question": "...", "session_id": "optional"}</code>. Returns <code>answer</code>, <code>sources</code>, <code>citations</code> (file + page), <code>session_id</code>.</dd>
+        <dt><span class="method get">GET</span>/documents</dt>
+        <dd>Ready documents with page and chunk counts.</dd>
+        <dt><span class="method get">GET</span>/validate-key</dt>
+        <dd>Confirms the key and names its organization.</dd>
+        <dt><span class="method get">GET</span>/health</dt>
+        <dd>No key needed. With a key, also returns document counts.</dd>
+      </dl>
+      <h3 style="margin-top:18px">Status codes</h3>
+      <table class="codes">
+        <tbody>
+          <tr><td><span class="status ok">200</span></td><td>Success</td></tr>
+          <tr><td><span class="status err">400</span></td><td>Bad input: empty question, invalid JSON, too long</td></tr>
+          <tr><td><span class="status err">401</span></td><td>Missing, wrong or revoked key</td></tr>
+          <tr><td><span class="status err">405</span></td><td>Wrong method, e.g. GET on /chat</td></tr>
+          <tr><td><span class="status err">429</span></td><td>Monthly question limit reached</td></tr>
+          <tr><td><span class="status err">503</span></td><td>AI service unavailable (e.g. Gemini quota). Retry later</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{{ api_base|json_script:"api-base" }}
+{% endblock %}
+
+{% block script %}
+<script>
+(function () {
+  const BASE = JSON.parse(document.getElementById("api-base").textContent).replace(/\/$/, "");
+  const $ = id => document.getElementById(id);
+  const keyInput = $("api-key"), remember = $("remember-key");
+  const ENDPOINTS = {
+    chat: { method: "POST", path: "/chat", auth: true },
+    documents: { method: "GET", path: "/documents", auth: true },
+    "validate-key": { method: "GET", path: "/validate-key", auth: true },
+    health: { method: "GET", path: "/health", auth: false, optionalAuth: true },
+  };
+  let current = "chat", lang = "curl";
+
+  // --- Key storage: sessionStorage by default, localStorage only if asked ---
+  const store = {
+    get(k) { try { return localStorage.getItem(k) ?? sessionStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v, persist) {
+      try { (persist ? localStorage : sessionStorage).setItem(k, v); (persist ? sessionStorage : localStorage).removeItem(k); } catch (e) {}
+    },
+  };
+  try { remember.checked = !!localStorage.getItem("devKey"); } catch (e) {}
+  keyInput.value = store.get("devKey") || "";
+  const saveKey = () => store.set("devKey", keyInput.value.trim(), remember.checked);
+  keyInput.addEventListener("input", () => { saveKey(); render(); });
+  remember.addEventListener("change", saveKey);
+  $("key-eye").addEventListener("click", () => { keyInput.type = keyInput.type === "password" ? "text" : "password"; });
+
+  // --- Endpoint selection ---
+  document.querySelectorAll("[data-ep]").forEach(b => b.addEventListener("click", () => {
+    current = b.dataset.ep;
+    document.querySelectorAll("[data-ep]").forEach(x => x.classList.toggle("on", x === b));
+    $("chat-fields").hidden = current !== "chat";
+    render();
+  }));
+  ["question", "session-id"].forEach(id => $(id).addEventListener("input", render));
+  $("new-session").addEventListener("click", () => { $("session-id").value = ""; render(); });
+
+  function body() {
+    const b = { question: $("question").value.trim() };
+    const sid = $("session-id").value.trim();
+    if (sid) b.session_id = sid;
+    return b;
+  }
+
+  // --- Code snippets ---
+  function snippet() {
+    const ep = ENDPOINTS[current], url = BASE + ep.path;
+    const key = $("include-key").checked && keyInput.value.trim() ? keyInput.value.trim() : "sk_your_key";
+    const json = JSON.stringify(body());
+    const pretty = JSON.stringify(body(), null, 2);
+    const post = ep.method === "POST";
+    if (lang === "curl") {
+      return [`curl -X ${ep.method} "${url}"`,
+        ep.auth ? `  -H "Authorization: Bearer ${key}"` : null,
+        post ? `  -H "Content-Type: application/json"` : null,
+        post ? `  -d '${json.replace(/'/g, "'\\''")}'` : null].filter(Boolean).join(" \\\n");
+    }
+    if (lang === "powershell") {
+      const lines = [];
+      if (ep.auth) lines.push(`$headers = @{ Authorization = "Bearer ${key}" }`);
+      if (post) lines.push(`$body = '${json.replace(/'/g, "''")}'`);
+      lines.push(`$r = Invoke-RestMethod "${url}" -Method ${ep.method === "POST" ? "Post" : "Get"}` +
+        (ep.auth ? " -Headers $headers" : "") + (post ? ' -ContentType "application/json" -Body $body' : ""));
+      lines.push(post ? "$r.answer\n$r.sources" : "$r | ConvertTo-Json -Depth 5");
+      return lines.join("\n");
+    }
+    if (lang === "python") {
+      return ["import requests", "",
+        `r = requests.${ep.method.toLowerCase()}(`, `    "${url}",`,
+        ep.auth ? `    headers={"Authorization": "Bearer ${key}"},` : null,
+        post ? `    json=${pretty.replace(/\n/g, "\n    ")},` : null,
+        "    timeout=120,", ")", "r.raise_for_status()",
+        post ? 'print(r.json()["answer"])' : "print(r.json())"].filter(l => l !== null).join("\n");
+    }
+    const headers = [];
+    if (ep.auth) headers.push(`"Authorization": "Bearer ${key}"`);
+    if (post) headers.push(`"Content-Type": "application/json"`);
+    return [`const res = await fetch("${url}", {`, `  method: "${ep.method}",`,
+      headers.length ? `  headers: { ${headers.join(", ")} },` : null,
+      post ? `  body: JSON.stringify(${pretty.replace(/\n/g, "\n  ")}),` : null, "});",
+      "const data = await res.json();", post ? "console.log(data.answer, data.sources);" : "console.log(data);"]
+      .filter(l => l !== null).join("\n");
+  }
+
+  function render() {
+    const ep = ENDPOINTS[current];
+    $("m-badge").textContent = ep.method;
+    $("m-badge").className = "method " + ep.method.toLowerCase();
+    $("url-text").textContent = BASE + ep.path;
+    $("snippet").textContent = snippet();
+  }
+  document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => {
+    lang = b.dataset.lang;
+    document.querySelectorAll("[data-lang]").forEach(x => x.classList.toggle("on", x === b));
+    render();
+  }));
+  $("include-key").addEventListener("change", render);
+  $("copy-snippet").addEventListener("click", function () {
+    navigator.clipboard.writeText($("snippet").textContent).then(() => { this.textContent = "Copied ✓"; setTimeout(() => this.innerHTML = "Copy", 1500); });
+  });
+
+  // --- JSON highlighting (escaped first, so response content can't inject HTML) ---
+  function highlight(obj) {
+    const esc = JSON.stringify(obj, null, 2).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return esc.replace(/("(\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(\.\d+)?([eE][+-]?\d+)?)/g, m => {
+      const cls = /^"/.test(m) ? (/:$/.test(m) ? "k" : "s") : /true|false|null/.test(m) ? "b" : "n";
+      return `<span class="${cls}">${m}</span>`;
+    });
+  }
+
+  // --- Sending ---
+  async function send() {
+    const ep = ENDPOINTS[current], key = keyInput.value.trim();
+    if (ep.auth && !key) { showMeta(null, 0, "Paste an API key first."); keyInput.focus(); return; }
+    if (current === "chat" && !body().question) { showMeta(null, 0, "Type a question first."); $("question").focus(); return; }
+    const btn = $("send");
+    btn.disabled = true; btn.textContent = current === "chat" ? "Waiting for answer…" : "Sending…";
+    // Marks these as Test requests in analytics; not part of the copyable snippets.
+    const headers = { "X-DocAssist-Client": "playground" };
+    if (ep.auth || (ep.optionalAuth && key)) headers.Authorization = "Bearer " + key;
+    const opts = { method: ep.method, headers };
+    if (ep.method === "POST") { headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body()); }
+    const started = performance.now();
+    let status = 0, data;
+    try {
+      const res = await fetch(BASE + ep.path, opts);
+      status = res.status;
+      const text = await res.text();
+      try { data = JSON.parse(text); } catch (e) { data = { raw: text.slice(0, 2000) }; }
+    } catch (e) {
+      data = { error: "Network error: " + e.message };
+    }
+    const ms = Math.round(performance.now() - started);
+    showMeta(status, ms);
+    const out = $("response");
+    out.hidden = false;
+    out.innerHTML = highlight(data);
+    if (current === "chat" && status === 200 && data.session_id) { $("session-id").value = data.session_id; render(); }
+    addHistory({ ep: current, status, ms, q: current === "chat" ? body().question : ENDPOINTS[current].path, at: Date.now() });
+    btn.disabled = false; btn.innerHTML = document.getElementById("send-label").innerHTML;
+    $("response-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  $("send").addEventListener("click", send);
+  $("check-key").addEventListener("click", () => { document.querySelector('[data-ep="validate-key"]').click(); send(); });
+
+  function showMeta(status, ms, note) {
+    const meta = $("resp-meta");
+    meta.replaceChildren();
+    if (note) { meta.append(Object.assign(document.createElement("span"), { className: "small", textContent: note, style: "color:var(--bad)" })); return; }
+    meta.append(Object.assign(document.createElement("span"), { className: "status " + (status >= 200 && status < 300 ? "ok" : "err"), textContent: status ? `${status}` : "failed" }));
+    meta.append(Object.assign(document.createElement("span"), { className: "small faint", textContent: `${ms.toLocaleString()} ms` }));
+  }
+
+  // --- History (this browser only) ---
+  function loadHistory() { try { return JSON.parse(localStorage.getItem("devHistory") || "[]"); } catch (e) { return []; } }
+  function addHistory(item) {
+    const list = [item, ...loadHistory()].slice(0, 10);
+    try { localStorage.setItem("devHistory", JSON.stringify(list)); } catch (e) {}
+    drawHistory();
+  }
+  function drawHistory() {
+    const list = loadHistory(), ul = $("history");
+    ul.replaceChildren();
+    if (!list.length) { ul.append(Object.assign(document.createElement("li"), { className: "faint small", textContent: "Nothing yet.", style: "cursor:default" })); return; }
+    for (const h of list) {
+      const li = document.createElement("li");
+      const ep = ENDPOINTS[h.ep] || ENDPOINTS.health;
+      li.innerHTML = `<span class="method ${ep.method.toLowerCase()}"></span><span class="q"></span><span class="status"></span>`;
+      li.querySelector(".method").textContent = ep.method;
+      li.querySelector(".q").textContent = h.q;
+      const st = li.querySelector(".status");
+      st.textContent = h.status || "failed"; st.classList.add(h.status >= 200 && h.status < 300 ? "ok" : "err");
+      li.title = `${new Date(h.at).toLocaleString()} · ${h.ms} ms. Click to load.`;
+      li.addEventListener("click", () => {
+        document.querySelector(`[data-ep="${h.ep}"]`)?.click();
+        if (h.ep === "chat") { $("question").value = h.q; render(); }
+      });
+      ul.append(li);
+    }
+  }
+  $("clear-history").addEventListener("click", () => { try { localStorage.removeItem("devHistory"); } catch (e) {} drawHistory(); });
+
+  render();
+  drawHistory();
+})();
+</script>
+<template id="send-label">{% icon "play" 15 %} Send request</template>
+{% endblock %}

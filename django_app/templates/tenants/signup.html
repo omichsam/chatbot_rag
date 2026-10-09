@@ -1,0 +1,12 @@
+{% extends "auth_base.html" %}
+{% block title %}Create account · DocAssist{% endblock %}
+{% block auth %}
+<h1>Create your account</h1>
+<p class="lead">You'll get your own private organization. Invite your team later.</p>
+<form method="post" class="form">
+  {% csrf_token %}
+  {{ form.as_div }}
+  <button class="btn btn-primary btn-block" type="submit" style="padding:11px 16px">Create account</button>
+</form>
+<p class="auth-alt">Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
+{% endblock %}

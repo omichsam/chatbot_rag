@@ -1,0 +1,64 @@
+{% extends "portal/base.html" %}
+{% load humanize ui %}
+{% block title %}Organizations · Platform Console{% endblock %}
+{% block crumb %}Organizations{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Organizations</h1>
+    <p>Every tenant on the platform with its plan and usage over the last 30 days.</p>
+  </div>
+  {% if portal_role == 'owner' or portal_role == 'finance' %}<a class="btn" href="{% url 'portal:usage_export' %}">{% icon "upload" 16 %} Usage CSV</a>{% endif %}
+</div>
+
+<details class="howto">
+  <summary>{% icon "help" 16 %} How organizations work</summary>
+  <div class="body"><ul>
+    <li>Each organization is a <strong>separate tenant</strong>: its own documents, vector collection, chats, members and API keys. Nothing is shared between them.</li>
+    <li><strong>Success</strong> is the share of answers in the last 30 days that weren't an AI error. <strong>Failed</strong> counts those errors.</li>
+    <li><strong>Suspending</strong> blocks the organization's members and API keys immediately, without deleting anything. <strong>Activate</strong> undoes it.</li>
+    <li>Open an organization to manage its members, documents, keys and limits, or to delete it.</li>
+  </ul></div>
+</details>
+
+<form method="get" class="card" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;padding:16px 18px">
+  <div style="flex:1;min-width:220px"><label for="q" class="small" style="font-weight:600">Search</label><input id="q" type="text" name="q" value="{{ q }}" placeholder="Name or slug"></div>
+  <div><label for="status" class="small" style="font-weight:600">Status</label>
+    <select id="status" name="status" style="width:auto">
+      <option value="">All</option>
+      <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+      <option value="suspended" {% if status == 'suspended' %}selected{% endif %}>Suspended</option>
+      <option value="deleting" {% if status == 'deleting' %}selected{% endif %}>Scheduled for deletion</option>
+    </select></div>
+  <button class="btn btn-primary" type="submit">Filter</button>
+  {% if q or status %}<a class="btn btn-ghost" href="{% url 'portal:organizations' %}">Reset</a>{% endif %}
+</form>
+
+<div class="card flush">
+  <div class="table-wrap">
+  <table data-table data-label="organizations">
+    <thead><tr><th>Organization</th><th>Plan</th><th>Owner</th><th class="num">Members</th><th class="num">Docs</th><th class="num">Questions</th><th class="num">Success</th><th class="num">Failed</th><th class="num">Keys</th><th>Limit</th><th>Last activity</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for org, s in rows %}
+        <tr>
+          <td><a href="{% url 'portal:organization' org.pk %}" style="color:var(--text);font-weight:600">{{ org.name }}</a><div class="small faint mono">{{ org.slug }}</div></td>
+          <td><span class="badge plain">{{ org.plan.name|default:"Custom" }}</span></td>
+          <td class="small">{{ s.owner|default:"–" }}</td>
+          <td class="num">{{ s.members }}</td>
+          <td class="num">{{ s.docs_ready }}{% if s.docs_failed %} <span class="badge bad plain">{{ s.docs_failed }} failed</span>{% endif %}{% if s.docs_busy %} <span class="badge warn plain">{{ s.docs_busy }}</span>{% endif %}</td>
+          <td class="num">{{ s.questions }}{% if s.api_questions %}<div class="small faint">{{ s.api_questions }} API</div>{% endif %}</td>
+          <td class="num">{% if s.success_pct is not None %}{{ s.success_pct }}%{% else %}–{% endif %}</td>
+          <td class="num">{% if s.failed %}<strong style="color:var(--bad)">{{ s.failed }}</strong>{% else %}0{% endif %}</td>
+          <td class="num">{{ s.keys }}</td>
+          <td class="small">{% if org.monthly_query_limit %}{{ org.monthly_query_limit|intcomma }}/mo{% else %}Unlimited{% endif %}</td>
+          <td class="small muted" data-sort="{{ s.last_activity|date:'c' }}">{{ s.last_activity|naturaltime|default:"never" }}</td>
+          <td>{% if org.deletion_scheduled_at %}<span class="badge bad" title="Deleted on {{ org.deletion_scheduled_at|date:'j M Y' }}">Deleting</span>{% elif org.is_active %}<span class="badge good">Active</span>{% else %}<span class="badge bad" title="{{ org.suspended_reason }}">Suspended</span>{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="12" class="muted">No organizations match.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "portal/base.html" %}
+{% load humanize ui %}
+{% block title %}Users · Platform Console{% endblock %}
+{% block crumb %}Users{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Users</h1>
+    <p>Every account on the platform, the organizations each belongs to, and their role in each.</p>
+  </div>
+</div>
+
+{% if temp %}
+<div class="card" style="border-color:var(--good);background:var(--good-soft)">
+  <h2 style="color:var(--good)">{% icon "check" 18 %} Temporary password for {{ temp.username }}</h2>
+  <p class="small">Give this to {{ temp.username }} securely. It's shown only once; ask them to change it after signing in.</p>
+  <pre class="mono" style="background:var(--surface);margin:0">{{ temp.password }}</pre>
+</div>
+{% endif %}
+
+<details class="howto">
+  <summary>{% icon "help" 16 %} How user controls work</summary>
+  <div class="body"><ul>
+    <li>A user account exists once on the platform and can belong to several organizations, each with its own role (owner, admin, member).</li>
+    <li><strong>Reset password</strong> sets a random temporary password and shows it to you once. The old password stops working immediately.</li>
+    <li><strong>Deactivate</strong> blocks sign-in everywhere without deleting anything. Their questions and documents stay.</li>
+    <li><strong>Superadmin</strong> (console owner) gives full access to this console and Django's /admin/, across every organization. Keep it to one or two people; changing it asks you to type the username.</li>
+    <li><strong>Console role</strong> gives narrower access without superadmin: <strong>Support</strong> can view organizations, users, health and the audit log, and use read-only support mode; <strong>Finance</strong> can view usage and plans.</li>
+    <li><strong>2FA</strong> shows who has set up an authenticator app. <strong>Reset 2FA</strong> removes it so they can set it up again (e.g. after losing their phone).</li>
+  </ul></div>
+</details>
+
+<form method="get" class="card" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;padding:16px 18px">
+  <div style="flex:1;min-width:220px"><label for="q" class="small" style="font-weight:600">Search</label><input id="q" type="text" name="q" value="{{ q }}" placeholder="Username or email"></div>
+  <div><label for="f" class="small" style="font-weight:600">Show</label>
+    <select id="f" name="filter" style="width:auto">
+      <option value="">Everyone</option>
+      <option value="superusers" {% if filter == 'superusers' %}selected{% endif %}>Superadmins</option>
+      <option value="staff" {% if filter == 'staff' %}selected{% endif %}>Everyone with console access</option>
+      <option value="inactive" {% if filter == 'inactive' %}selected{% endif %}>Deactivated</option>
+      <option value="no_org" {% if filter == 'no_org' %}selected{% endif %}>Not in any organization</option>
+    </select></div>
+  <button class="btn btn-primary" type="submit">Filter</button>
+</form>
+
+<div class="card flush">
+  <div class="table-wrap"><table data-table data-label="users">
+    <thead><tr><th>User</th><th>Organizations &amp; roles</th><th>Console</th><th>2FA</th><th>Last sign-in</th><th>Status</th><th data-nosort></th></tr></thead>
+    <tbody>
+      {% for u in users %}
+        <tr>
+          <td><div class="file-cell" style="min-width:180px"><span class="avatar">{{ u.username|initials }}</span>
+            <span><strong>{{ u.username }}</strong>{% if u.pk == user.pk %} <span class="badge accent plain">You</span>{% endif %}<br><span class="small faint">{{ u.email|default:"no email" }}</span></span></div></td>
+          <td>{% for m in u.memberships.all %}<a class="role-chip" href="{% url 'portal:organization' m.organization_id %}" style="color:var(--text)">{{ m.organization.name }} · {{ m.get_role_display }}</a>{% empty %}<span class="faint small">None</span>{% endfor %}</td>
+          <td>
+            {% if u.is_superuser %}<span class="badge accent">Owner</span>
+            {% elif portal_role == 'owner' %}
+              <form method="post" action="{% url 'portal:user_action' u.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="set_staff_role">
+                <select name="role" onchange="this.form.submit()" aria-label="Console role for {{ u.username }}" style="width:auto;padding:4px 8px;font-size:.84rem">
+                  <option value="">None</option>
+                  {% for value, label in staff_roles %}<option value="{{ value }}" {% if u.platform_staff.role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select></form>
+            {% elif u.platform_staff %}<span class="badge">{{ u.platform_staff.get_role_display }}</span>
+            {% else %}<span class="faint small">–</span>{% endif %}
+          </td>
+          <td>{% if u.two_factor and u.two_factor.is_confirmed %}<span class="badge good" title="Since {{ u.two_factor.confirmed_at|date:'j M Y' }}">On</span>{% else %}<span class="faint small">Off</span>{% endif %}</td>
+          <td class="small muted" data-sort="{{ u.last_login|date:'c' }}">{{ u.last_login|naturaltime|default:"never" }}</td>
+          <td>{% if u.is_active %}<span class="badge good">Active</span>{% else %}<span class="badge bad">Deactivated</span>{% endif %}</td>
+          <td>{% if portal_role == 'owner' %}<div class="actions" style="flex-wrap:nowrap">
+            <form method="post" action="{% url 'portal:user_action' u.pk %}" class="inline" data-confirm="Reset the password for {{ u.username }}? Their current password stops working.">{% csrf_token %}<input type="hidden" name="action" value="reset_password"><button class="btn btn-sm">Reset password</button></form>
+            {% if u.pk != user.pk %}
+              <form method="post" action="{% url 'portal:user_action' u.pk %}" class="inline">{% csrf_token %}
+                {% if u.is_active %}<input type="hidden" name="action" value="deactivate"><button class="btn btn-sm btn-danger" data-confirm="Deactivate {{ u.username }}?">Deactivate</button>
+                {% else %}<input type="hidden" name="action" value="activate"><button class="btn btn-sm">Activate</button>{% endif %}
+              </form>
+              <form method="post" action="{% url 'portal:user_action' u.pk %}" class="inline">{% csrf_token %}
+                {% if u.is_superuser %}<input type="hidden" name="action" value="revoke_super"><button class="btn btn-sm btn-ghost" data-confirm-title="Remove superadmin access?" data-confirm="{{ u.username }} loses full access to the Platform Console." data-confirm-label="Remove" data-confirm-type="{{ u.username }}">Remove superadmin</button>
+                {% else %}<input type="hidden" name="action" value="grant_super"><button class="btn btn-sm btn-ghost" data-confirm-title="Make {{ u.username }} a superadmin?" data-confirm="They get full control of every organization and of the platform." data-confirm-label="Make superadmin" data-confirm-type="{{ u.username }}">Make superadmin</button>{% endif %}
+              </form>
+            {% endif %}
+            {% if u.two_factor %}<form method="post" action="{% url 'portal:user_action' u.pk %}" class="inline" data-confirm="Remove {{ u.username }}'s authenticator? They can set it up again; until then their sign-in uses just a password.">{% csrf_token %}<input type="hidden" name="action" value="reset_2fa"><button class="btn btn-sm btn-ghost">Reset 2FA</button></form>{% endif %}
+          </div>{% endif %}</td>
+        </tr>
+      {% empty %}<tr><td colspan="7" class="muted">No users match.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

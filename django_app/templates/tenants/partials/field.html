@@ -1,0 +1,7 @@
+{# One settings field: label, input, help, errors. Pass field=... (and optional hint=... shown beside the label). #}
+<div class="sfield{% if field.errors %} has-error{% endif %}">
+  <div class="sfield-label"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{% if hint %}<span class="faint small">{{ hint }}</span>{% endif %}</div>
+  {{ field }}
+  {% if field.help_text %}<p class="sfield-help">{{ field.help_text }}</p>{% endif %}
+  {% for e in field.errors %}<p class="sfield-error">{{ e }}</p>{% endfor %}
+</div>

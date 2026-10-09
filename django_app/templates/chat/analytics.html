@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load humanize ui %}
+{% block title %}Analytics · {{ organization.name }}{% endblock %}
+{% block crumb %}Analytics{% endblock %}
+{% block style %}{% include "partials/question_styles.css" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Analytics</h1>
+    <p>How {{ organization.name }} is using the assistant · last {{ days }} days unless noted</p>
+  </div>
+</div>
+
+<div class="grid" style="margin-bottom:18px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+  <div class="card stat-card" style="margin:0">
+    <span class="stat-icon">{% icon "chat" 20 %}</span>
+    <div><div class="stat-value">{{ questions_period|intcomma }}</div><div class="stat-label">Questions, last {{ days }} days</div></div>
+  </div>
+  <div class="card stat-card" style="margin:0">
+    <span class="stat-icon">{% icon "chart" 20 %}</span>
+    <div style="flex:1">
+      <div class="stat-value">{{ questions_month|intcomma }}{% if organization.monthly_query_limit %}<span class="faint" style="font-size:1rem;font-weight:500"> / {{ organization.monthly_query_limit|intcomma }}</span>{% endif %}</div>
+      <div class="stat-label">This month{% if organization.monthly_query_limit %} (quota){% endif %}</div>
+      {% if organization.monthly_query_limit %}<div class="progress"><span style="width:{% widthratio questions_month organization.monthly_query_limit 100 %}%"></span></div>{% endif %}
+    </div>
+  </div>
+  <div class="card stat-card" style="margin:0">
+    <span class="stat-icon">{% icon "clock" 20 %}</span>
+    <div><div class="stat-value">{% if avg_seconds %}{{ avg_seconds|floatformat:1 }}<span class="faint" style="font-size:1rem;font-weight:500"> s</span>{% else %}–{% endif %}</div><div class="stat-label">Average answer time</div></div>
+  </div>
+  <div class="card stat-card" style="margin:0">
+    <span class="stat-icon" style="{% if failed_period %}background:var(--bad-soft);color:var(--bad){% endif %}">{% icon "alert" 20 %}</span>
+    <div><div class="stat-value">{{ failed_period }}</div><div class="stat-label">Failed answers</div></div>
+  </div>
+  <div class="card stat-card" style="margin:0">
+    <span class="stat-icon">{% icon "file" 20 %}</span>
+    <div><div class="stat-value">{{ document_count }}</div><div class="stat-label">Ready documents · {{ document_bytes|filesizeformat }}</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2>Questions per day</h2>
+    {% if peak %}<span class="small faint">Peak {{ peak }}/day</span>{% endif %}
+  </div>
+  {% if peak %}
+    <div class="bars" role="img" aria-label="Questions per day for the last {{ days }} days, peak {{ peak }}">
+      {% for d in daily %}
+        <div class="bar-slot" tabindex="0">
+          <div class="bar" style="height: {{ d.pct }}%"></div>
+          <span class="tip">{{ d.day|date:"D, M j" }} · {{ d.count }} question{{ d.count|pluralize }}</span>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="axis"><span>{{ daily.0.day|date:"M j" }}</span><span>Today</span></div>
+    <details>
+      <summary>Show as table</summary>
+      <div class="table-wrap" style="margin-top:10px"><table data-table data-label="days">
+        <thead><tr><th>Day</th><th class="num">Questions</th></tr></thead>
+        <tbody>{% for d in daily reversed %}<tr><td>{{ d.day|date:"D, M j" }}</td><td class="num">{{ d.count }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </details>
+  {% else %}
+    <div class="empty-state"><h3>No questions yet</h3><p>Activity will show here once people start asking.</p></div>
+  {% endif %}
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h2>Most asked</h2>
+    {% if top_questions %}
+      <ol class="rank">
+        {% for q in top_questions %}<li><span class="n">{{ forloop.counter }}</span><span class="label" title="{{ q.q }}">{{ q.q }}</span><span class="count">{{ q.n }}</span></li>{% endfor %}
+      </ol>
+    {% else %}<p class="muted">No questions yet.</p>{% endif %}
+  </div>
+  <div class="card">
+    <h2>Most active people</h2>
+    {% if top_users %}
+      <ol class="rank">
+        {% for u in top_users %}<li><span class="avatar" style="width:28px;height:28px;font-size:.7rem">{{ u.session__user__username|initials }}</span><span class="label">{{ u.session__user__username }}<br><span class="small faint">active {{ u.last|naturaltime }}</span></span><span class="count">{{ u.n }}</span></li>{% endfor %}
+      </ol>
+    {% else %}<p class="muted">No web users yet.</p>{% endif %}
+    {% if by_channel %}
+      <p class="small muted" style="margin:14px 0 0">All time by channel:
+        {% for c in by_channel %}<span class="badge plain {% if c.session__channel == 'api' %}accent{% endif %}">{% if c.session__channel == 'api' %}API{% else %}Web{% endif %} · {{ c.n }}</span> {% endfor %}
+      </p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2 style="margin:0">Recent questions</h2>
+    <a class="btn btn-sm" href="{% url 'chat:questions' %}">Open question explorer {% icon "chevron-right" 14 %}</a>
+  </div>
+  {% if recent %}
+    <div class="qlist">{% for r in recent %}{% include "chat/_question_row.html" %}{% endfor %}</div>
+    <p class="small faint" style="margin:10px 0 0">Click a row for the full answer. The explorer adds filters, topics, outcomes and a breakdown per API key.</p>
+  {% else %}
+    <p class="muted">No questions yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

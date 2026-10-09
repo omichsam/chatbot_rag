@@ -1,0 +1,19 @@
+{% extends "auth_base.html" %}
+{% load ui %}
+{% block title %}Enter your code · DocAssist{% endblock %}
+{% block auth %}
+<h1 style="font-size:1.35rem;margin:0 0 6px">Two-factor sign-in</h1>
+<p class="muted" style="margin:0 0 18px">Enter the 6-digit code from your authenticator app for <strong>{{ username }}</strong>, or one of your backup codes.</p>
+<form method="post" class="form">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <div>
+    <label for="code">Code</label>
+    <input id="code" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" required autofocus
+           style="font-family:'Geist Mono',ui-monospace,monospace;font-size:1.3rem;letter-spacing:.2em;text-align:center">
+  </div>
+  <button class="btn btn-primary" type="submit" style="width:100%">Verify</button>
+</form>
+<p class="small faint" style="margin:16px 0 0">Lost your phone? Use a backup code, or ask another superadmin to reset your two-factor sign-in.</p>
+<p class="small" style="margin:8px 0 0"><a href="{% url 'login' %}">Back to sign in</a></p>
+{% endblock %}

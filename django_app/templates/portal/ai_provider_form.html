@@ -1,0 +1,139 @@
+{% extends "portal/base.html" %}
+{% load ui %}
+{% block title %}{% if provider %}Edit {{ provider.name }}{% else %}Add AI provider{% endif %} · Platform Console{% endblock %}
+{% block crumb %}<a href="{% url 'portal:ai_providers' %}">AI providers</a> <span>{% icon "chevron-right" 15 %}</span> {% if provider %}{{ provider.name }}{% else %}Add{% endif %}{% endblock %}
+{% block style %}
+.kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.kind { position: relative; display: block; padding: 13px 14px 13px 40px; border: 1px solid var(--border); border-radius: 11px; cursor: pointer; }
+.kind:hover { border-color: var(--border-strong); }
+.kind input { position: absolute; left: 14px; top: 15px; margin: 0; accent-color: var(--accent); width: 16px; height: 16px; }
+.kind b { display: block; font-size: .92rem; font-weight: 600; }
+.kind span { display: block; font-size: .78rem; color: var(--text-2); margin-top: 2px; }
+.kind:has(input:checked) { border-color: var(--text); background: var(--surface-2); box-shadow: 0 0 0 1px var(--text) inset; }
+.pform { display: grid; gap: 18px; max-width: 760px; }
+.pform .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 700px) { .pform .two { grid-template-columns: minmax(0, 1fr); } }
+.pform label.lbl { display: block; font-weight: 600; font-size: .88rem; margin-bottom: 6px; }
+.pform input[type=text], .pform input[type=url], .pform input[type=password], .pform input[type=number] { width: 100%; }
+.pform .help { margin: 6px 0 0; color: var(--text-3); font-size: .8rem; }
+.pform .err { margin: 6px 0 0; color: var(--bad); font-size: .82rem; font-weight: 550; }
+.keylink { font-size: .84rem; }
+.check { display: flex; gap: 10px; align-items: center; font-size: .9rem; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% if provider %}Edit {{ provider.name }}{% else %}Add AI provider{% endif %}</h1>
+    <p>Choose the service, paste its API key and pick a model. Save and test to check it works.</p>
+  </div>
+</div>
+
+<form method="post" class="card pform" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<p class="err">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+
+  <div>
+    <label class="lbl">Provider</label>
+    <div class="kinds" id="kinds">
+      {% for opt in form.kind %}
+        <label class="kind">{{ opt.tag }}<b>{{ opt.choice_label }}</b><span>{% with p=presets|get:opt.data.value %}{% if opt.data.value == 'custom' %}Any OpenAI-compatible API · key optional{% elif p.external %}Cloud API{% else %}Runs on your server{% endif %}{% if not p.needs_key and opt.data.value != 'custom' %} · no key needed{% endif %}{% endwith %}</span></label>
+      {% endfor %}
+    </div>
+    {% for e in form.kind.errors %}<p class="err">{{ e }}</p>{% endfor %}
+  </div>
+
+  <div class="two">
+    <div>
+      <label class="lbl" for="{{ form.name.id_for_label }}">Name</label>
+      {{ form.name }}
+      <p class="help">Shown to admins. Blank uses the provider's name.</p>
+      {% for e in form.name.errors %}<p class="err">{{ e }}</p>{% endfor %}
+    </div>
+    <div>
+      <label class="lbl" for="{{ form.model.id_for_label }}">Model</label>
+      {{ form.model }}
+      <p class="help" id="model-help">{{ form.model.help_text }}</p>
+      {% for e in form.model.errors %}<p class="err">{{ e }}</p>{% endfor %}
+    </div>
+  </div>
+
+  <div id="key-row">
+    <label class="lbl" for="{{ form.api_key.id_for_label }}">API key <a class="keylink" id="key-link" href="#" target="_blank" rel="noopener" hidden>Get a key ↗</a></label>
+    {{ form.api_key }}
+    <p class="help" id="key-help">{{ form.api_key.help_text }}</p>
+    {% if form.clear_key %}<label class="check" style="margin-top:8px">{{ form.clear_key }} {{ form.clear_key.label }}</label>{% endif %}
+    {% for e in form.api_key.errors %}<p class="err">{{ e }}</p>{% endfor %}
+  </div>
+
+  <details {% if form.base_url.errors or form.timeout.errors %}open{% endif %}>
+    <summary class="small" style="cursor:pointer">Advanced: API address and timeout</summary>
+    <div class="two" style="margin-top:14px">
+      <div>
+        <label class="lbl" for="{{ form.base_url.id_for_label }}">{{ form.base_url.label }}</label>
+        {{ form.base_url }}
+        <p class="help">{{ form.base_url.help_text }}</p>
+        {% for e in form.base_url.errors %}<p class="err">{{ e }}</p>{% endfor %}
+      </div>
+      <div>
+        <label class="lbl" for="{{ form.timeout.id_for_label }}">{{ form.timeout.label }}</label>
+        {{ form.timeout }}
+        <p class="help">{{ form.timeout.help_text }}</p>
+        {% for e in form.timeout.errors %}<p class="err">{{ e }}</p>{% endfor %}
+      </div>
+    </div>
+  </details>
+
+  <label class="check">{{ form.is_enabled }} Enabled: use it to answer questions</label>
+
+  <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+    <a class="btn" href="{% url 'portal:ai_providers' %}">Cancel</a>
+    <button class="btn" type="submit" name="then" value="save">Save</button>
+    <button class="btn btn-primary" type="submit" name="then" value="test">{% icon "play" 14 %} Save and test</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block script %}
+{{ presets|json_script:"presets" }}
+<script>
+(function () {
+  const presets = JSON.parse(document.getElementById("presets").textContent);
+  const envGeminiKey = {{ env_gemini_key|yesno:"true,false" }};
+  const defaultModel = "{{ default_model|escapejs }}";
+  const model = document.getElementById("{{ form.model.id_for_label }}");
+  const baseUrl = document.getElementById("{{ form.base_url.id_for_label }}");
+  const keyLink = document.getElementById("key-link");
+  const keyHelp = document.getElementById("key-help");
+  const modelHelp = document.getElementById("model-help");
+  const keyHelpDefault = keyHelp.textContent;
+  let previous = null;
+
+  function apply(kind) {
+    const p = presets[kind];
+    if (!p) return;
+    // Fill the address only while it is empty or still the previous preset's.
+    const prev = previous && presets[previous];
+    if (!baseUrl.value || (prev && baseUrl.value === prev.base_url)) baseUrl.value = p.base_url;
+    baseUrl.placeholder = p.base_url || "https://example.com/v1";
+    if (kind === "gemini") {
+      model.placeholder = `Blank uses the platform default (${defaultModel})`;
+      modelHelp.textContent = "Blank follows the platform default; organizations can also choose their own Gemini model.";
+    } else {
+      model.placeholder = p.model ? `e.g. ${p.model}` : "The provider's model name";
+      modelHelp.textContent = "Exactly as the provider names it. The example is a starting point; check their current list.";
+    }
+    if (!model.value && p.model && kind !== "gemini") model.value = p.model;
+    keyLink.hidden = !p.key_url;
+    keyLink.href = p.key_url || "#";
+    keyLink.textContent = kind === "ollama" ? "Install Ollama ↗" : "Get a key ↗";
+    keyHelp.textContent = !p.needs_key ? "Not needed for a local model. " + keyHelpDefault
+      : (kind === "gemini" && envGeminiKey ? "Optional: blank uses GOOGLE_API_KEY from .env. " + keyHelpDefault : keyHelpDefault);
+    previous = kind;
+  }
+  document.querySelectorAll("#kinds input").forEach(input => {
+    input.addEventListener("change", () => apply(input.value));
+    if (input.checked) { previous = input.value; apply(input.value); }
+  });
+})();
+</script>
+{% endblock %}

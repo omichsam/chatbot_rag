@@ -1,0 +1,206 @@
+{% extends "portal/base.html" %}
+{% load humanize ui %}
+{% block title %}Platform settings · Platform Console{% endblock %}
+{% block crumb %}Platform settings{% endblock %}
+{% block style %}
+.glance { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+@media (max-width: 1000px) { .glance { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.glance .card { margin: 0; padding: 14px 16px; }
+.glance .l { font-size: .8rem; color: var(--text-2); }
+.glance .v { font-weight: 650; margin-top: 4px; display: flex; align-items: center; gap: 7px; }
+.layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 28px; align-items: start; }
+.snav { position: sticky; top: 84px; display: grid; gap: 2px; }
+.snav a { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-radius: 8px; color: var(--text-2); font-size: .9rem; }
+.snav a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+.snav a.on { background: var(--surface-2); color: var(--text); font-weight: 600; }
+.snav a.bad { color: var(--bad); }
+.snav a .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-left: auto; display: none; }
+.snav a.changed .dot { display: inline-block; }
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .snav { top: 63px; z-index: 6; display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px; padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--border); scrollbar-width: none; }
+  .snav a { flex-shrink: 0; white-space: nowrap; border: 1px solid var(--border); border-radius: 999px; padding: 7px 12px; font-size: .84rem; }
+  .snav a.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .snav a svg { display: none; }
+}
+.tabbed .ssection { display: none; }
+.tabbed .ssection.active { display: block; }
+.ssection { padding: 0; overflow: hidden; margin-bottom: 16px; }
+.ssection > header { padding: 20px 24px 0; display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.ssection > header h2 { margin: 0 0 4px; display: flex; align-items: center; gap: 9px; }
+.ssection > header p { margin: 0; color: var(--text-2); font-size: .88rem; }
+.ssection .body { padding: 20px 24px 22px; display: grid; gap: 18px; }
+.ssection .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 760px) { .ssection .grid { grid-template-columns: minmax(0, 1fr); } .ssection > header, .ssection .body { padding-left: 16px; padding-right: 16px; } }
+.sfield label.lbl { display: block; font-weight: 600; font-size: .88rem; margin-bottom: 6px; }
+.sfield input:not([type=checkbox]):not([type=radio]) { width: 100%; }
+.sfield .help { margin: 6px 0 0; color: var(--text-3); font-size: .8rem; line-height: 1.45; }
+.sfield .def { color: var(--text-3); font-size: .78rem; font-weight: 400; margin-left: 6px; }
+.sfield .err { margin: 6px 0 0; color: var(--bad); font-size: .82rem; font-weight: 550; }
+.sfield.has-error input { border-color: var(--bad); }
+.switch-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 11px; grid-column: 1 / -1; }
+.switch-row .txt b { display: block; font-size: .9rem; font-weight: 600; }
+.switch-row .txt span { display: block; font-size: .8rem; color: var(--text-2); margin-top: 3px; line-height: 1.45; }
+.switch { position: relative; flex-shrink: 0; width: 40px; height: 23px; }
+.switch input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 1; }
+.switch i { position: absolute; inset: 0; border-radius: 999px; background: var(--border-strong); transition: background .15s; }
+.switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+.switch input:checked ~ i { background: var(--good); }
+.switch input:checked ~ i::after { transform: translateX(17px); }
+.switch input:focus-visible ~ i { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tone-opts { display: flex; gap: 10px; flex-wrap: wrap; }
+.tone-opts label { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: .9rem; }
+.tone-opts label:has(input:checked) { border-color: var(--text); background: var(--surface-2); }
+.wide { grid-column: 1 / -1; }
+.savebar { position: sticky; bottom: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(8px); box-shadow: var(--shadow); }
+.savebar .state { font-size: .86rem; color: var(--text-2); }
+.savebar.dirty .state { color: var(--warn); font-weight: 600; }
+.recent { margin: 0; padding: 0; list-style: none; font-size: .85rem; }
+.recent li { padding: 9px 0; border-bottom: 1px solid var(--border); }
+.recent li:last-child { border-bottom: 0; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Platform settings</h1>
+    <p>Settings for the whole platform. They apply right away, with no restart. Values start from <code>.env</code>; “Restore defaults” brings them back.</p>
+  </div>
+</div>
+
+<div class="glance">
+  <div class="card"><div class="l">Maintenance</div><div class="v"><span class="status-dot {% if conf.maintenance_mode %}bad{% else %}ok{% endif %}"></span>{% if conf.maintenance_mode %}On: users locked out{% else %}Off{% endif %}</div></div>
+  <div class="card"><div class="l">Self sign-up</div><div class="v">{% if conf.allow_signup %}Allowed{% else %}Invite only{% endif %}</div></div>
+  <div class="card"><div class="l">Sign-in protection</div><div class="v">Pause after {{ conf.login_max_attempts }} failures</div></div>
+  <div class="card"><div class="l">Last changed</div><div class="v">{% if conf.updated_by %}{{ conf.updated_at|naturaltime }} · {{ conf.updated_by.username }}{% else %}Never{% endif %}</div></div>
+</div>
+
+<div class="layout">
+  <nav class="snav" id="snav" aria-label="Settings sections">
+    {% for key, title, icon, description, fields in sections %}
+      <a href="#{{ key }}">{% icon icon 16 %} {{ title }}<span class="dot"></span></a>
+    {% endfor %}
+  </nav>
+
+  <div>
+    <form method="post" id="psettings" novalidate>
+      {% csrf_token %}
+      {% for key, title, icon, description, fields in sections %}
+        <section class="card ssection" id="{{ key }}">
+          <header>
+            <div><h2>{% icon icon 18 %} {{ title }}</h2><p>{{ description }}</p></div>
+            <button class="btn btn-sm btn-ghost" type="submit" form="reset-{{ key }}" title="Put this tab back to the .env defaults">{% icon "refresh" 14 %} Restore defaults</button>
+          </header>
+          <div class="body grid">
+            {% for field, is_switch, default in fields %}
+              {% if is_switch %}
+                <label class="switch-row">
+                  <span class="txt"><b>{{ field.label }}</b><span>{{ field.help_text }}</span></span>
+                  <span class="switch">{{ field }}<i></i></span>
+                </label>
+              {% elif field.name == "announcement_tone" %}
+                <div class="sfield wide">
+                  <label class="lbl">Style</label>
+                  <div class="tone-opts">{% for opt in field %}<label>{{ opt.tag }} {{ opt.choice_label }}</label>{% endfor %}</div>
+                </div>
+              {% else %}
+                <div class="sfield{% if field.errors %} has-error{% endif %}{% if field.name == 'announcement' or field.name == 'maintenance_message' or field.name == 'default_model' %} wide{% endif %}">
+                  <label class="lbl" for="{{ field.id_for_label }}">{{ field.label }}{% if default != "" and default is not None and field.name != "maintenance_message" %}<span class="def">default {{ default }}</span>{% endif %}</label>
+                  {{ field }}
+                  {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+                  {% for e in field.errors %}<p class="err">{{ e }}</p>{% endfor %}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </section>
+      {% endfor %}
+
+      <div class="savebar" id="savebar">
+        <span class="state" id="save-state">All changes saved</span>
+        <span style="display:flex;gap:8px">
+          <a class="btn" href="{% url 'portal:settings' %}" id="discard" hidden>Discard</a>
+          <button class="btn btn-primary" type="submit">Save changes</button>
+        </span>
+      </div>
+    </form>
+
+    {% for key, title, icon, description, fields in sections %}
+      <form method="post" id="reset-{{ key }}" hidden
+            data-confirm-title="Restore {{ title|lower }} defaults?"
+            data-confirm="These settings go back to the values from .env. Unsaved changes on this page are lost."
+            data-confirm-label="Restore" data-confirm-tone="neutral">{% csrf_token %}<input type="hidden" name="action" value="reset"><input type="hidden" name="section" value="{{ key }}"></form>
+    {% endfor %}
+
+    {% if recent %}
+    <div class="card" style="margin-top:16px">
+      <div class="card-head"><h2>Recent changes</h2><a class="small" href="{% url 'portal:audit' %}?action=platform">Audit log</a></div>
+      <ul class="recent">
+        {% for a in recent %}<li><strong>{{ a.actor.username|default:"–" }}</strong> <span class="faint">· {{ a.created_at|naturaltime }}</span><br><span class="muted">{{ a.detail|default:a.target }}</span></li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+(function () {
+  const form = document.getElementById("psettings");
+  const bar = document.getElementById("savebar");
+  const state = document.getElementById("save-state");
+  const discard = document.getElementById("discard");
+  const nav = document.getElementById("snav");
+  const links = [...nav.querySelectorAll("a")];
+  const sections = links.map(a => document.querySelector(a.getAttribute("href")));
+  const snap = s => [...s.querySelectorAll("input, textarea, select")].map(el => el.name + "=" + (el.type === "checkbox" || el.type === "radio" ? el.checked : el.value)).join("&");
+  const initial = sections.map(snap);
+
+  // Tabs, kept in the URL so a refresh or save returns to the same one.
+  form.classList.add("tabbed");
+  function open(i, push) {
+    links.forEach((a, j) => a.classList.toggle("on", i === j));
+    sections.forEach((s, j) => s.classList.toggle("active", i === j));
+    const hash = "#" + sections[i].id;
+    if (push) history.replaceState(null, "", hash);
+    form.action = hash;
+    discard.href = location.pathname + hash;
+    if (nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: links[i].offsetLeft - 16, behavior: "smooth" });
+  }
+  links.forEach((a, i) => {
+    if (sections[i].querySelector(".has-error, .err")) a.classList.add("bad");
+    a.addEventListener("click", e => { e.preventDefault(); open(i, true); });
+  });
+  const firstError = sections.findIndex(s => s.querySelector(".err"));
+  const fromHash = sections.findIndex(s => "#" + s.id === location.hash);
+  open(firstError >= 0 ? firstError : Math.max(fromHash, 0), false);
+
+  // Unsaved changes: dots on tabs, the save bar, and a warning before leaving.
+  function check() {
+    let dirty = false;
+    sections.forEach((s, i) => { const c = snap(s) !== initial[i]; links[i].classList.toggle("changed", c); dirty ||= c; });
+    bar.classList.toggle("dirty", dirty);
+    state.textContent = dirty ? "Unsaved changes" : "All changes saved";
+    discard.hidden = !dirty;
+  }
+  form.addEventListener("input", check);
+  form.addEventListener("change", check);
+  let submitting = false;
+  document.addEventListener("submit", () => { submitting = true; });
+  window.addEventListener("beforeunload", e => { if (!submitting && bar.classList.contains("dirty")) { e.preventDefault(); e.returnValue = ""; } });
+
+  // Turning maintenance on locks everyone else out, so it asks first.
+  const maintenance = document.getElementById("id_maintenance_mode");
+  const wasOn = maintenance.checked;
+  maintenance.addEventListener("change", () => {
+    if (maintenance.checked && !wasOn) {
+      form.dataset.confirmTitle = "Turn maintenance mode on?";
+      form.dataset.confirm = "Everyone except superadmins will see the maintenance page, and the API will return 503, until you turn it off.";
+      form.dataset.confirmLabel = "Turn on";
+    } else {
+      delete form.dataset.confirm; delete form.dataset.confirmTitle; delete form.dataset.confirmLabel;
+    }
+  });
+})();
+</script>
+{% endblock %}

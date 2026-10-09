@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load humanize ui %}
+{% block title %}Saved answers · {{ organization.name }}{% endblock %}
+{% block crumb %}Saved answers{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" defer></script>
+{% endblock %}
+{% block style %}
+.saved-item { padding: 24px 26px; }
+.saved-item .q { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+.saved-item .q strong { font-size: 1.05rem; font-weight: 600; }
+.md { color: var(--text); }
+.md.raw { white-space: pre-wrap; }
+.md > :last-child { margin-bottom: 0; }
+.md ul, .md ol { padding-left: 1.3rem; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-size: .78rem; color: var(--text-2); }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Saved answers</h1>
+    <p>Answers you bookmarked from chat, so you can find them again. Only you can see this list.</p>
+  </div>
+</div>
+
+<div data-paginate data-label="saved answers">
+{% for item in items %}
+  <div class="card saved-item">
+    <div class="q">
+      <span class="kpi-icon" style="width:34px;height:34px">{% icon "chat" 16 %}</span>
+      <div style="flex:1;min-width:0">
+        <strong>{{ item.question.content|default:"Question" }}</strong>
+        <div class="small faint">Saved {{ item.save.created_at|naturaltime }}</div>
+      </div>
+      <div class="actions">
+        <a class="btn btn-sm btn-ghost" href="{% url 'chat:session' item.answer.session.public_id %}" title="Open chat">{% icon "chevron-right" 16 %} Open chat</a>
+        <form method="post" action="{% url 'chat:save' item.answer.pk %}" class="inline">
+          {% csrf_token %}<input type="hidden" name="next" value="{% url 'chat:saved' %}">
+          <button class="btn btn-sm btn-ghost btn-danger" title="Remove">{% icon "trash" 15 %}<span class="sr-only">Remove</span></button>
+        </form>
+      </div>
+    </div>
+    <div class="md raw" data-md>{{ item.answer.content }}</div>
+    {% if item.answer.sources %}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px">
+        {% for s in item.answer.sources %}<span class="chip">{% icon "file" 12 %} {{ s.filename }} · p.{{ s.page }}</span>{% endfor %}
+      </div>
+    {% endif %}
+  </div>
+{% empty %}
+  <div class="card">
+    <div class="empty-state">
+      <div class="stat-icon">{% icon "bookmark" 24 %}</div>
+      <h3>Nothing saved yet</h3>
+      <p>In chat, click <strong>Save</strong> under any answer to keep it here.</p>
+      <a class="btn btn-primary" href="{% url 'chat:index' %}">Go to chat</a>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}
+{% block script %}
+<script>
+window.addEventListener("load", () => {
+  if (!(window.marked && window.DOMPurify)) return;
+  document.querySelectorAll("[data-md]").forEach(el => {
+    el.innerHTML = DOMPurify.sanitize(marked.parse(el.textContent, { breaks: true }));
+    el.classList.remove("raw");
+  });
+});
+</script>
+{% endblock %}

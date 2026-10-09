@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block body %}
+<div class="auth-shell">
+  <span class="auth-ring one" aria-hidden="true"></span>
+  <span class="auth-ring two" aria-hidden="true"></span>
+  <button type="button" class="btn btn-ghost btn-icon auth-theme" data-theme-toggle title="Toggle light/dark mode" aria-label="Toggle theme">
+    <span class="theme-dark">{% icon "moon" 18 %}</span><span class="theme-light" hidden>{% icon "sun" 18 %}</span>
+  </button>
+  <div class="auth-card">
+    <a class="brand" href="{% url 'login' %}">
+      <span class="logo">{% icon "sparkles" 20 %}</span>
+      <span class="brand-text"><span class="brand-name">DocAssist</span></span>
+    </a>
+    {% block auth %}{% endblock %}
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+<script>
+document.querySelectorAll("[data-pw-toggle]").forEach(btn => btn.addEventListener("click", () => {
+  const input = btn.parentElement.querySelector("input");
+  const show = input.type === "password";
+  input.type = show ? "text" : "password";
+  btn.querySelector(".pw-show").hidden = show;
+  btn.querySelector(".pw-hide").hidden = !show;
+  btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+}));
+</script>
+{% endblock %}

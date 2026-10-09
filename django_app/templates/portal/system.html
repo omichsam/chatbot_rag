@@ -1,0 +1,53 @@
+{% extends "portal/base.html" %}
+{% load ui %}
+{% block title %}System health · Platform Console{% endblock %}
+{% block crumb %}System health{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>System health</h1>
+    <p>Status of each part DocAssist depends on, with live tests you can run.</p>
+  </div>
+</div>
+
+{% if result %}
+<div class="card" style="border-color:{% if result.ok %}var(--good){% else %}var(--bad){% endif %};background:{% if result.ok %}var(--good-soft){% else %}var(--bad-soft){% endif %}">
+  <strong>{% if result.ok %}✓ Test passed{% else %}✕ Test failed{% endif %} · {{ result.kind }}</strong>
+  <p class="small" style="margin:6px 0 0">{{ result.message }}</p>
+</div>
+{% endif %}
+
+<details class="howto">
+  <summary>{% icon "help" 16 %} How the parts fit together</summary>
+  <div class="body"><ul>
+    <li><strong>Database</strong> stores organizations, users, documents list, chats, ratings and keys.</li>
+    <li><strong>Vector store</strong> holds each document's passages as number-vectors, one collection per organization, so searches can't cross tenants.</li>
+    <li><strong>Embeddings</strong> turn text into those vectors with a local model on this server; no data leaves for this step.</li>
+    <li><strong>AI answers</strong> are written from the top matching passages by the providers on the <a href="{% url 'portal:ai_providers' %}">AI providers</a> page, tried in order. If they all fail, answers quote the documents instead.</li>
+    <li><strong>Indexing</strong> processes uploads in the background: read, split into chunks, embed, store.</li>
+    <li><strong>Test</strong> buttons run a real call and record the result in the audit log. The AI test calls the first enabled provider and uses a tiny amount of its quota.</li>
+  </ul></div>
+</details>
+
+<div class="grid-2">
+  {% for c in checks %}
+    <div class="card check-card">
+      <div class="head">
+        <span class="status-dot {% if c.ok %}ok{% elif c.ok is None %}unknown{% else %}bad{% endif %}"></span>
+        <h3>{{ c.name }}</h3>
+        {% if c.key == 'llm' or c.key == 'embeddings' or c.key == 'vectors' or c.key == 'database' %}
+          <form method="post" action="{% url 'portal:system_test' %}" class="inline" style="margin-left:auto">{% csrf_token %}<input type="hidden" name="kind" value="{{ c.key }}"><button class="btn btn-sm">{% icon "play" 13 %} Test</button></form>
+        {% endif %}
+      </div>
+      <p class="small" style="margin:0;color:{% if c.ok is False %}var(--bad){% else %}var(--text-2){% endif %}">{{ c.summary }}</p>
+      <dl class="kv">{% for k, v in c.details %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endfor %}</dl>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>Configuration</h2>
+  <p class="small muted">Read from <code>.env</code> when the server starts. Change values there and restart to apply.</p>
+  <dl class="kv">{% for k, v in config %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endfor %}</dl>
+</div>
+{% endblock %}

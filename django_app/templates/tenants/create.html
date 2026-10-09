@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}New organization{% endblock %}
+{% block crumb %}New organization{% endblock %}
+{% block content %}
+<div class="card" style="max-width:520px;margin:6vh auto 0;padding:32px">
+  <span class="stat-icon" style="margin-bottom:16px">{% icon "building" 20 %}</span>
+  <h1 style="margin-bottom:6px">New organization</h1>
+  <p class="muted">You'll be its owner. Each organization has its own documents, chats, members and API keys.</p>
+  <form method="post" class="form" style="margin-top:20px">
+    {% csrf_token %}
+    {{ form.as_div }}
+    <button class="btn btn-primary btn-block" type="submit">Create organization</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load humanize ui %}
+{% block title %}Feedback · {{ organization.name }}{% endblock %}
+{% block crumb %}Feedback{% endblock %}
+{% block style %}
+.tabs { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); margin-bottom: 20px; }
+.tabs a { padding: 7px 14px; border-radius: 9px; color: var(--text-2); font-weight: 500; font-size: .9rem; display: inline-flex; gap: 8px; align-items: center; }
+.tabs a:hover { text-decoration: none; color: var(--text); }
+.tabs a.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+.tabs .n { font-size: .75rem; padding: 1px 7px; border-radius: 999px; background: var(--surface-3); }
+.fb { padding: 22px 26px; }
+.fb .answer { color: var(--text-2); white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; margin: 10px 0 0; }
+.fb .comment { margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); border-left: 3px solid var(--bad); }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Feedback</h1>
+    <p>Answers people rated with 👍 or 👎. Review the 👎 ones: they usually point to a missing or outdated document.</p>
+  </div>
+</div>
+
+<nav class="tabs" aria-label="Filter">
+  <a href="?tab=negative" class="{% if tab == 'negative' %}on{% endif %}">{% icon "thumbs-down" 15 %} To review <span class="n">{{ counts.negative }}</span></a>
+  <a href="?tab=positive" class="{% if tab == 'positive' %}on{% endif %}">{% icon "thumbs-up" 15 %} Helpful <span class="n">{{ counts.positive }}</span></a>
+  <a href="?tab=reviewed" class="{% if tab == 'reviewed' %}on{% endif %}">{% icon "check" 15 %} Reviewed <span class="n">{{ counts.reviewed }}</span></a>
+</nav>
+
+<div data-paginate data-label="answers">
+{% for item in items %}
+  <div class="card fb">
+    <div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap">
+      <div style="min-width:0;flex:1">
+        <strong style="font-size:1.02rem">{{ item.question.content|default:"(question not found)" }}</strong>
+        <div class="small faint">{{ item.asker }} · rated {{ item.answer.rated_at|naturaltime }}</div>
+      </div>
+      <div class="actions">
+        {% if item.answer.rating == 1 %}<span class="badge good">Helpful</span>{% else %}<span class="badge bad">Not helpful</span>{% endif %}
+        {% if tab == 'negative' %}
+          <form method="post" action="{% url 'chat:mark_reviewed' item.answer.pk %}" class="inline">{% csrf_token %}
+            <button class="btn btn-sm">{% icon "check" 15 %} Mark reviewed</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+    <p class="answer small">{{ item.answer.content }}</p>
+    {% if item.answer.feedback_comment %}<div class="comment small"><strong>Their comment:</strong> {{ item.answer.feedback_comment }}</div>{% endif %}
+    {% if item.answer.sources %}
+      <p class="small faint" style="margin:10px 0 0">Sources used: {% for s in item.answer.sources %}{{ s.filename }} p.{{ s.page }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+    {% endif %}
+  </div>
+{% empty %}
+  <div class="card">
+    <div class="empty-state">
+      <div class="stat-icon">{% icon "inbox" 24 %}</div>
+      <h3>{% if tab == 'negative' %}Nothing to review{% elif tab == 'positive' %}No 👍 yet{% else %}Nothing reviewed yet{% endif %}</h3>
+      <p>People rate answers with the 👍 / 👎 buttons under each answer in chat.</p>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

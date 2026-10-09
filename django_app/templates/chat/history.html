@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load humanize ui %}
+{% block title %}My history · {{ organization.name }}{% endblock %}
+{% block crumb %}My history{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>My history</h1>
+    <p>Your conversations in {{ organization.name }}. Only you can see them.</p>
+  </div>
+  <form method="get" style="display:flex;gap:8px">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search your chats" aria-label="Search your chats" style="width:260px">
+    <button class="btn" type="submit">{% icon "search" 15 %} Search</button>
+  </form>
+</div>
+{% for label, sessions in groups %}
+  <h2 class="small faint" style="text-transform:uppercase;letter-spacing:.08em;font-size:.72rem;margin:20px 0 8px">{{ label }}</h2>
+  <div class="card flush">
+    {% for s in sessions %}
+      <a href="{% url 'chat:session' s.public_id %}" style="display:flex;gap:14px;align-items:center;padding:13px 18px;color:var(--text);{% if not forloop.last %}border-bottom:1px solid var(--border){% endif %}">
+        <span class="kpi-icon" style="width:34px;height:34px">{% icon "chat" 16 %}</span>
+        <span style="flex:1;min-width:0"><strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.title|default:"Untitled chat" }}</strong>
+          <span class="small faint">{{ s.n }} message{{ s.n|pluralize }} · {{ s.updated_at|naturaltime }}</span></span>
+        {% icon "chevron-right" 16 %}
+      </a>
+    {% endfor %}
+  </div>
+{% empty %}
+  <div class="card"><div class="empty-state"><div class="stat-icon">{% icon "history" 22 %}</div>
+    <h3>{% if q %}No chats match "{{ q }}"{% else %}No chats yet{% endif %}</h3>
+    <p><a href="{% url 'chat:index' %}">Start a chat</a> and it will appear here.</p></div></div>
+{% endfor %}
+{% endblock %}

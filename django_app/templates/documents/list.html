@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load humanize ui %}
+{% block title %}Documents · {{ organization.name }}{% endblock %}
+{% block crumb %}Documents{% endblock %}
+{% block head %}{% if any_busy %}<meta http-equiv="refresh" content="4">{% endif %}{% endblock %}
+{% block style %}
+tr.paused-row td:not(:last-child) { opacity: .55; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Documents</h1>
+    <p>{{ documents|length }} document{{ documents|length|pluralize }} · {{ total_size|filesizeformat }}{% if paused_count %} · {{ paused_count }} paused{% endif %} · visible only to members of {{ organization.name }}</p>
+  </div>
+</div>
+
+{% if form %}
+<div class="card">
+  <form method="post" action="{% url 'documents:upload' %}" enctype="multipart/form-data" id="upload-form">
+    {% csrf_token %}
+    <label class="dropzone" id="dropzone">
+      <input type="file" name="files" multiple accept=".pdf,.txt,.md" id="file-input" required>
+      <span class="stat-icon">{% icon "upload" 22 %}</span>
+      <span><strong>Drop files here</strong> or click to browse</span>
+      <span class="small faint">PDF, TXT or Markdown · several at once · up to {{ max_mb|default:25 }} MB each</span>
+      <span class="picked" id="picked"></span>
+    </label>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-primary" type="submit" id="upload-btn" disabled>{% icon "upload" 16 %} Upload</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card flush">
+  {% if documents %}
+  <div class="table-wrap">
+  <table data-table data-label="documents">
+    <thead><tr><th>Document</th><th>Status</th><th class="num">Pages</th><th class="num">Chunks</th><th class="num">Size</th><th>Uploaded</th>{% if membership.is_admin %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for d in documents %}
+      <tr{% if d.is_paused %} class="paused-row"{% endif %}>
+        <td>
+          <div class="file-cell">
+            <span class="file-icon {{ d.original_name|file_kind }}">{{ d.original_name|file_kind }}</span>
+            <span><strong>{{ d.original_name }}</strong>
+              {% if d.error %}<span class="small" style="color:var(--bad)">{{ d.error }}</span>{% endif %}</span>
+          </div>
+        </td>
+        <td>
+          {% if d.is_paused %}<span class="badge" title="Paused {{ d.paused_at|naturaltime }}. Kept, but not used in answers.">Paused</span>
+          {% elif d.status == 'ready' %}<span class="badge good">Ready</span>
+          {% elif d.status == 'failed' %}<span class="badge bad">Failed</span>
+          {% else %}<span class="badge warn pulse">{{ d.get_status_display }}</span>{% endif %}
+        </td>
+        <td class="num">{{ d.page_count|default:"–" }}</td>
+        <td class="num">{{ d.chunk_count|default:"–" }}</td>
+        <td class="num small" data-sort="{{ d.size }}">{{ d.size|filesizeformat }}</td>
+        <td class="small muted" data-sort="{{ d.created_at|date:'c' }}">{{ d.created_at|naturaltime }}{% if d.uploaded_by %}<br><span class="faint">by {{ d.uploaded_by.username }}</span>{% endif %}</td>
+        {% if membership.is_admin %}
+        <td>
+          <div class="actions">
+            {% if d.status == 'ready' or d.is_paused %}
+            <form method="post" action="{% url 'documents:pause' d.pk %}" class="inline">{% csrf_token %}{% if d.is_paused %}<button class="btn btn-sm btn-ghost btn-icon" title="Resume: use in answers again" data-confirm-title="Resume {{ d.original_name }}?" data-confirm="Answers will start using this document again right away. No re-indexing is needed." data-confirm-label="Resume" data-confirm-tone="neutral">{% icon "play" 16 %}<span class="sr-only">Resume</span></button>{% else %}<button class="btn btn-sm btn-ghost btn-icon" title="Pause: keep it, but stop using it in answers" data-confirm-title="Pause {{ d.original_name }}?" data-confirm="Answers will stop using this document right away. The file and its index are kept, so you can resume it at any time." data-confirm-label="Pause" data-confirm-tone="neutral">{% icon "pause" 16 %}<span class="sr-only">Pause</span></button>{% endif %}</form>
+            {% endif %}
+            {% if not d.is_busy %}
+            <form method="post" action="{% url 'documents:reprocess' d.pk %}" class="inline" data-confirm-title="Re-index {{ d.original_name }}?" data-confirm="The text is extracted and indexed again. This takes a few seconds to a few minutes; answers may miss it briefly while it runs." data-confirm-label="Re-index" data-confirm-tone="neutral">{% csrf_token %}<button class="btn btn-sm btn-ghost btn-icon" title="Re-index">{% icon "refresh" 16 %}<span class="sr-only">Re-index</span></button></form>
+            {% endif %}
+            <form method="post" action="{% url 'documents:delete' d.pk %}" class="inline" data-confirm-title="Delete {{ d.original_name }}?" data-confirm="The file and its index are removed permanently and answers stop using it immediately. To hide it temporarily, pause it instead." data-confirm-label="Delete">{% csrf_token %}<button class="btn btn-sm btn-ghost btn-icon btn-danger" title="Delete">{% icon "trash" 16 %}<span class="sr-only">Delete</span></button></form>
+          </div>
+        </td>
+        {% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if any_busy %}<p class="small faint" style="padding:12px 16px;margin:0;border-top:1px solid var(--border)">Indexing in progress. This page refreshes automatically.</p>{% endif %}
+  {% else %}
+    <div class="empty-state">
+      <div class="stat-icon">{% icon "file" 24 %}</div>
+      <h3>No documents yet</h3>
+      <p>{% if form %}Upload a PDF, TXT or Markdown file above to get started.{% else %}Ask an admin to upload some.{% endif %}</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block script %}
+{% if form %}
+<script>
+(function () {
+  const zone = document.getElementById("dropzone");
+  const input = document.getElementById("file-input");
+  const picked = document.getElementById("picked");
+  const btn = document.getElementById("upload-btn");
+  function show() {
+    picked.replaceChildren(...[...input.files].map(f => {
+      const chip = document.createElement("span");
+      chip.className = "badge accent plain";
+      chip.textContent = f.name;
+      return chip;
+    }));
+    btn.disabled = !input.files.length;
+  }
+  input.addEventListener("change", show);
+  ["dragenter", "dragover"].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add("dragging"); }));
+  ["dragleave", "drop"].forEach(ev => zone.addEventListener(ev, () => zone.classList.remove("dragging")));
+  zone.addEventListener("drop", e => { e.preventDefault(); input.files = e.dataTransfer.files; show(); });
+  document.getElementById("upload-form").addEventListener("submit", () => { btn.disabled = true; btn.textContent = "Uploading…"; });
+})();
+</script>
+{% endif %}
+{% endblock %}

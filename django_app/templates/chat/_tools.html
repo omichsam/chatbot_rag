@@ -1,0 +1,10 @@
+{% load ui %}<div class="msg-tools" data-id="{{ mid }}">
+  <button type="button" class="btn btn-ghost btn-sm{% if rating == 1 %} on{% endif %}" data-rate="1" title="Helpful" aria-label="Helpful" aria-pressed="{% if rating == 1 %}true{% else %}false{% endif %}">{% icon "thumbs-up" 15 %}</button>
+  <button type="button" class="btn btn-ghost btn-sm{% if rating == -1 %} on{% endif %}" data-rate="-1" title="Not helpful" aria-label="Not helpful" aria-pressed="{% if rating == -1 %}true{% else %}false{% endif %}">{% icon "thumbs-down" 15 %}</button>
+  <button type="button" class="btn btn-ghost btn-sm{% if saved %} on{% endif %}" data-save title="Save answer">{% icon "bookmark" 15 %} <span>{% if saved %}Saved{% else %}Save{% endif %}</span></button>
+  <button type="button" class="btn btn-ghost btn-sm" data-copy title="Copy answer">{% icon "copy" 15 %} <span>Copy</span></button>
+</div>
+<form class="fb-form" hidden>
+  <input type="text" maxlength="500" placeholder="What was wrong or missing? (optional)" aria-label="What was wrong">
+  <button class="btn btn-sm btn-primary" type="submit">Send</button>
+</form>

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Help & guides · DocAssist{% endblock %}
+{% block crumb %}Help &amp; guides{% endblock %}
+{% block style %}
+.guide h2 { display: flex; align-items: center; gap: 10px; }
+.guide ul, .guide ol { padding-left: 1.2rem; margin: 0 0 .5rem; }
+.guide li { margin: .35rem 0; }
+.example { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 0; }
+.example div { padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); font-size: .9rem; }
+.example .bad { border-color: var(--bad-soft); background: var(--bad-soft); }
+.example .good { border-color: var(--good-soft); background: var(--good-soft); }
+@media (max-width: 640px) { .example { grid-template-columns: 1fr; } }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Help &amp; guides</h1>
+    <p>How to get good answers, and what each part of DocAssist does.</p>
+  </div>
+</div>
+
+<div class="grid-2 guide" style="align-items:start">
+  <div class="card">
+    <h2>{% icon "sparkles" 18 %} Getting good answers</h2>
+    <ul>
+      <li><strong>Be specific.</strong> Name the program, form, year or person you mean.</li>
+      <li><strong>Ask one thing at a time.</strong> Split long questions into steps.</li>
+      <li><strong>Follow up naturally.</strong> The assistant remembers the conversation, so "what about the deadline?" works.</li>
+      <li><strong>Check the sources.</strong> Each answer lists the file and page it came from.</li>
+    </ul>
+    <div class="example">
+      <div class="bad">✕ "Tell me about it"</div>
+      <div class="good">✓ "What support does WhiteBox give innovators for patents?"</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>{% icon "shield" 18 %} What the assistant can and can't do</h2>
+    <ul>
+      <li>It answers <strong>only from your organization's documents</strong>, not from the internet.</li>
+      <li>If the documents don't cover something, it says so instead of guessing.</li>
+      <li>Documents from other organizations are never searched or shown.</li>
+      <li>It can still make mistakes. Use 👎 to flag a wrong answer so an admin can fix it.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>{% icon "bookmark" 18 %} Rating and saving answers</h2>
+    <ul>
+      <li><strong>👍 / 👎</strong> under each answer tells admins what works. Add a short note when you click 👎.</li>
+      <li><strong>Save</strong> keeps an answer in <a href="{% url 'chat:saved' %}">Saved answers</a>, visible only to you.</li>
+      <li><strong>Copy</strong> copies the answer text to paste elsewhere.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>{% icon "users" 18 %} Roles</h2>
+    <ul>
+      <li><strong>Member:</strong> chat, browse documents, save answers.</li>
+      <li><strong>Admin:</strong> also uploads documents and sees analytics, feedback, knowledge gaps, API keys, members and settings.</li>
+      <li><strong>Owner:</strong> everything an admin can do, plus making other people owners.</li>
+    </ul>
+    <p class="small faint" style="margin:0">Items with a {% icon "lock" 12 %} in the menu are for admins. Ask an owner or admin if you need access.</p>
+  </div>
+
+  <div class="card">
+    <h2>{% icon "file" 18 %} For admins: managing documents</h2>
+    <ol>
+      <li>Upload PDF, TXT or Markdown files on <a href="{% url 'documents:list' %}">Documents</a>. Text-based PDFs work best; scanned images can't be read yet.</li>
+      <li>Wait for the status to show <span class="badge good">Ready</span>, usually a few seconds per document.</li>
+      <li>Check <strong>Knowledge gaps</strong> and <strong>Feedback</strong> each week to see what's missing.</li>
+      <li>To update a document, delete the old version and upload the new one.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>{% icon "key" 18 %} For admins: connecting apps</h2>
+    <p class="small">Create a key under <strong>API keys</strong>, then send questions from your website or app:</p>
+    <pre><code>POST /api/v1/chat
+Authorization: Bearer sk_your_key
+{"question": "What is WhiteBox?"}</code></pre>
+    <p class="small faint" style="margin:0">Answers come from this organization's documents only.</p>
+  </div>
+</div>
+{% endblock %}

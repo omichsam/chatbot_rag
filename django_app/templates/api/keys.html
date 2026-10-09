@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load humanize ui %}
+{% block title %}API keys · {{ organization.name }}{% endblock %}
+{% block crumb %}API keys{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>API keys</h1>
+    <p>Let your website or apps ask {{ organization.name }}'s documents. Revoking a key takes effect immediately.</p>
+  </div>
+</div>
+
+{% if new_key %}
+<div class="card" style="border-color:var(--good);background:var(--good-soft)">
+  <div class="card-head"><h2 style="color:var(--good)">{% icon "check" 18 %} Your new key is ready</h2></div>
+  <p class="small">Copy it now. Only a fingerprint is stored, so it can't be shown again.</p>
+  <div style="display:flex;gap:8px;align-items:stretch;flex-wrap:wrap">
+    <pre id="new-key" class="mono" style="flex:1;margin:0;background:var(--surface)">{{ new_key }}</pre>
+    <button class="btn" type="button" id="copy-key">{% icon "copy" 16 %} Copy</button>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Create a key</h2>
+  <form method="post" class="form inline-form">
+    {% csrf_token %}
+    {{ form.as_div }}
+    <button class="btn btn-primary" type="submit">{% icon "plus" 16 %} Create key</button>
+  </form>
+</div>
+
+<div class="card flush">
+  {% if keys %}
+  <div class="table-wrap">
+  <table data-table data-label="API keys">
+    <thead><tr><th>Name</th><th>Key</th><th>Status</th><th>Last used</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+    {% for k in keys %}
+      <tr>
+        <td><strong>{{ k.name }}</strong></td>
+        <td><code>{{ k.prefix }}…</code></td>
+        <td>{% if k.is_active %}<span class="badge good">Active</span>{% else %}<span class="badge bad">Revoked</span>{% endif %}</td>
+        <td class="small muted" data-sort="{{ k.last_used_at|date:'c' }}">{{ k.last_used_at|naturaltime|default:"Never" }}</td>
+        <td class="small muted" data-sort="{{ k.created_at|date:'c' }}">{{ k.created_at|date:"M j, Y" }}{% if k.created_by %}<br><span class="faint">by {{ k.created_by.username }}</span>{% endif %}</td>
+        <td><div class="actions"><a class="btn btn-sm btn-ghost" href="{% url 'chat:questions' %}?key={{ k.pk }}&period=all">Activity</a>{% if k.is_active %}
+          <form method="post" action="{% url 'keys:revoke' k.pk %}" class="inline" data-confirm="Revoke {{ k.name }}? Apps using it will stop working.">{% csrf_token %}<button class="btn btn-sm btn-danger">Revoke</button></form>
+        {% endif %}</div></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+    <div class="empty-state"><div class="stat-icon">{% icon "key" 24 %}</div><h3>No keys yet</h3><p>Create one above to connect an app.</p></div>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Quick start</h2>
+  <pre><code>curl -X POST {{ api_base }}chat \
+  -H "Authorization: Bearer sk_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is this document about?"}'</code></pre>
+  <p class="small muted" style="margin:0">Send the returned <code>session_id</code> with the next request for follow-up questions. Other endpoints: <code>GET documents</code>, <code>GET validate-key</code>, <code>GET health</code>.</p>
+</div>
+{% endblock %}
+{% block script %}
+{% if new_key %}
+<script>
+document.getElementById("copy-key").addEventListener("click", function () {
+  navigator.clipboard.writeText(document.getElementById("new-key").textContent).then(() => { this.textContent = "Copied ✓"; });
+});
+</script>
+{% endif %}
+{% endblock %}

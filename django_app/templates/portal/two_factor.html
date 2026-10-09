@@ -1,0 +1,96 @@
+{% extends "portal/base.html" %}
+{% load ui %}
+{% block title %}Two-factor sign-in · Platform Console{% endblock %}
+{% block crumb %}Two-factor sign-in{% endblock %}
+{% block style %}
+.tf { max-width: 720px; }
+.tf ol { padding-left: 20px; line-height: 1.7; }
+.qr { width: 196px; height: 196px; padding: 10px; background: #fff; border-radius: 12px; border: 1px solid var(--border); display: grid; place-items: center; }
+.qr img, .qr svg { width: 100%; height: 100%; }
+.secret { font-family: "Geist Mono", ui-monospace, monospace; letter-spacing: .08em; word-break: break-all; padding: 8px 10px; background: var(--surface-2); border-radius: 8px; }
+.codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; font-family: "Geist Mono", ui-monospace, monospace; font-size: 1rem; padding: 14px 16px; background: var(--surface-2); border-radius: 10px; }
+.code-input { width: 160px !important; font-family: "Geist Mono", ui-monospace, monospace; font-size: 1.2rem; letter-spacing: .2em; text-align: center; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Two-factor sign-in</h1>
+    <p>A code from an authenticator app on your phone, as well as your password, protects the console.</p>
+  </div>
+</div>
+
+<div class="tf">
+{% if backup_codes %}
+  <div class="card" style="border-color:var(--good)">
+    <h2 style="color:var(--good)">{% icon "check" 18 %} Save your backup codes</h2>
+    <p class="small muted">Each one works once, if you lose your phone. They're shown only now: print them or keep them in a password manager.</p>
+    <div class="codes">{% for c in backup_codes %}<span>{{ c }}</span>{% endfor %}</div>
+  </div>
+{% endif %}
+
+{% if device and device.is_confirmed %}
+  <div class="card">
+    <h2>{% icon "lock" 18 %} Two-factor sign-in is on</h2>
+    <p class="small muted" style="margin:0 0 14px">Since {{ device.confirmed_at|date:"j M Y" }}. {{ codes_left }} backup code{{ codes_left|pluralize }} left.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
+      <form method="post" data-confirm="Make new backup codes? Your old ones stop working." data-confirm-tone="neutral" data-confirm-label="Make new codes">{% csrf_token %}<input type="hidden" name="action" value="new_codes"><button class="btn">New backup codes</button></form>
+      {% if not required %}
+        <form method="post" style="display:flex;gap:8px;align-items:center" data-confirm="Remove two-factor sign-in? Your account will be protected by just your password.">
+          {% csrf_token %}<input type="hidden" name="action" value="disable">
+          <input class="code-input" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" aria-label="Current code" required>
+          <button class="btn btn-danger">Remove</button>
+        </form>
+      {% else %}
+        <p class="small faint" style="margin:6px 0 0">Required for the console, so it can't be removed.</p>
+      {% endif %}
+    </div>
+  </div>
+
+{% elif device %}
+  <div class="card">
+    <h2>Set up your authenticator</h2>
+    <ol>
+      <li>Open an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Authy…).</li>
+      <li>Scan this code, or enter the key by hand.</li>
+      <li>Type the 6-digit code the app shows.</li>
+    </ol>
+    <div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center;margin:8px 0 18px">
+      <div class="qr" id="qr" data-uri="{{ uri }}" aria-label="QR code for your authenticator app"></div>
+      <div style="flex:1;min-width:220px">
+        <div class="small muted" style="margin-bottom:6px">Key, if you can't scan</div>
+        <div class="secret">{{ secret }}</div>
+        <div class="small faint" style="margin-top:6px">Account: DocAssist ({{ user.username }}) · time-based · 6 digits</div>
+      </div>
+    </div>
+    <form method="post" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      {% csrf_token %}<input type="hidden" name="action" value="confirm">
+      <input class="code-input" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" aria-label="6-digit code" required autofocus>
+      <button class="btn btn-primary">Turn on</button>
+    </form>
+  </div>
+
+{% else %}
+  <div class="card">
+    <h2>{% if required %}Two-factor sign-in is required{% else %}Add a second step to your sign-in{% endif %}</h2>
+    <p class="small muted">{% if required %}The platform requires it for everyone with console access. It takes about a minute.{% else %}Recommended for everyone with console access: a stolen password alone won't get anyone in.{% endif %}</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="start"><button class="btn btn-primary">{% icon "lock" 16 %} Set up two-factor sign-in</button></form>
+  </div>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block script %}
+{% if device and not device.is_confirmed %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script>
+(function () {
+  const box = document.getElementById("qr");
+  if (!box || typeof qrcode === "undefined") return;
+  const qr = qrcode(0, "M");
+  qr.addData(box.dataset.uri);
+  qr.make();
+  box.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+})();
+</script>
+{% endif %}
+{% endblock %}

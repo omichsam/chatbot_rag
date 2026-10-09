@@ -1,0 +1,93 @@
+{% extends "portal/base.html" %}
+{% load ui %}
+{% block title %}Console guide · Platform Console{% endblock %}
+{% block crumb %}Console guide{% endblock %}
+{% block style %}
+.guide h2 { display: flex; align-items: center; gap: 10px; }
+.guide ol, .guide ul { padding-left: 1.2rem; margin: 0; } .guide li { margin: .35rem 0; }
+.flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 4px; }
+.flow span { padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: .88rem; background: var(--surface-2); }
+.flow i { color: var(--text-3); font-style: normal; }
+.roles { width: 100%; font-size: .88rem; }
+.roles td, .roles th { padding: 8px 10px; }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Console guide</h1>
+    <p>What the Platform Console is for, who can use which part, and how each part works.</p>
+  </div>
+</div>
+
+<div class="card guide">
+  <h2>{% icon "shield" 18 %} The console is not a workspace</h2>
+  <p>Organizations work in their <strong>workspace</strong> (chat, documents, settings). The <strong>Platform Console</strong> is where the platform team operates every organization at once. It has its own dark sidebar and a status bar showing the environment, maintenance and AI providers, so it's always clear you're acting on everyone. Use <strong>Exit to workspace</strong> to go back; in the workspace, the <strong>Platform Console</strong> link brings you here.</p>
+  <div class="flow"><span>Platform team (console)</span><i>→</i><span>Organizations</span><i>→</i><span>Owners &amp; admins (workspace)</span><i>→</i><span>Members</span></div>
+</div>
+
+<div class="card guide">
+  <h2>{% icon "users" 18 %} Console roles</h2>
+  <div class="table-wrap"><table class="roles">
+    <thead><tr><th></th><th>Owner (superadmin)</th><th>Support</th><th>Finance</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard, organizations (view)</td><td>✓</td><td>✓</td><td>✓</td></tr>
+      <tr><td>Change organizations, plans, users, settings, AI providers</td><td>✓</td><td></td><td></td></tr>
+      <tr><td>Support mode (read-only "view as")</td><td>✓</td><td>✓</td><td></td></tr>
+      <tr><td>Users, security centre, audit log, system health</td><td>✓</td><td>✓ (view)</td><td></td></tr>
+      <tr><td>Plans and usage CSV</td><td>✓</td><td></td><td>✓ (view)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="small muted" style="margin:10px 0 0">Give someone a role on <strong>Users</strong> (Console column). Superadmin status gives the owner role and is changed only by typing the username to confirm.</p>
+</div>
+
+<div class="grid-2 guide" style="align-items:start">
+  <div class="card">
+    <h2>{% icon "dashboard" 18 %} Dashboard</h2>
+    <ul>
+      <li>Questions, active organizations, active people and answer reliability for 7, 30 or 90 days, each compared with the period before.</li>
+      <li><strong>AI providers</strong>: who wrote the answers, their speed, failures and last error; how many answers were quoted or reused.</li>
+      <li>Every organization's usage, what needs attention, system health and recent console actions. <strong>Usage CSV</strong> exports usage per organization.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>{% icon "building" 18 %} Organizations and plans</h2>
+    <ul>
+      <li><strong>Plans</strong> package limits (questions per month, documents, members, cloud AI allowed) and apply in one click.</li>
+      <li><strong>Suspend</strong> needs a reason. <strong>Schedule deletion</strong> takes it offline and deletes it after 30 days unless cancelled; <strong>Delete now</strong> skips the wait. Both ask you to type the name.</li>
+      <li><strong>Export data</strong> downloads a zip with everything the organization owns, including its files.</li>
+      <li><strong>View as this organization</strong> opens its workspace read-only (support mode), with a banner and an audit-log entry.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>{% icon "shield" 18 %} Security centre</h2>
+    <ul>
+      <li>Everyone with console access, their role and whether two-factor sign-in is on.</li>
+      <li><strong>Require two-factor sign-in</strong> for the console (set yours up first).</li>
+      <li>Failed sign-ins and sign-in pauses for the last 30 days.</li>
+      <li>Every API key across organizations, flagged when never used, unused for 90 days, or older than 180 days.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>{% icon "history" 18 %} Audit log</h2>
+    <ul>
+      <li>Filter by action, person, organization, text and dates; page through 25 at a time; export CSV.</li>
+      <li>Changes recorded as "label: old → new" show as before and after.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>{% icon "search" 18 %} Search</h2>
+    <ul>
+      <li><strong>Ctrl K</strong> searches organizations, users and API keys across the whole platform, and jumps to any console page you can use.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>{% icon "lock" 18 %} Good practice</h2>
+    <ul>
+      <li>Turn on two-factor sign-in for everyone with console access.</li>
+      <li>Give people the narrowest role that does the job; keep owners to one or two named people.</li>
+      <li>Prefer suspend or scheduled deletion over deleting now. Export first if the data might be needed.</li>
+      <li>Use support mode for support; it's recorded. Check the dashboard and security centre weekly.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block body_class %}console{% endblock %}
+{% block body %}
+{% with url=request.resolver_match.url_name %}
+<div class="app">
+  <aside class="sidebar console-sidebar" id="sidebar">
+    <a class="brand console-brand" href="{% url 'portal:overview' %}">
+      <span class="logo">{% icon "shield" 19 %}</span>
+      <span class="brand-text"><span class="brand-name">Platform Console</span><span class="brand-sub">DocAssist {{ console.version }} · {{ console.environment }}</span></span>
+    </a>
+    <button type="button" class="search-btn" data-palette-open data-tip="Search the platform (Ctrl K)">
+      {% icon "search" 15 %}<span>Search the platform…</span><kbd>Ctrl K</kbd>
+    </button>
+
+    <nav class="nav" aria-label="Platform Console">
+      <div class="sec"><span>Operate</span></div>
+      <a href="{% url 'portal:overview' %}" class="{% if url == 'overview' %}active{% endif %}" data-tip="Dashboard">{% icon "dashboard" %}<span>Dashboard</span></a>
+      <a href="{% url 'portal:organizations' %}" class="{% if url == 'organizations' or url == 'organization' %}active{% endif %}" data-tip="Organizations">{% icon "building" %}<span>Organizations</span>{% if platform_badges.deleting %}<em class="tag alert">{{ platform_badges.deleting }} del.</em>{% elif platform_badges.suspended %}<em class="tag">{{ platform_badges.suspended }} off</em>{% endif %}</a>
+      {% if portal_role == 'owner' or portal_role == 'finance' %}<a href="{% url 'portal:plans' %}" class="{% if url == 'plans' %}active{% endif %}" data-tip="Plans">{% icon "chart" %}<span>Plans</span></a>{% endif %}
+      {% if portal_role == 'owner' or portal_role == 'support' %}<a href="{% url 'portal:users' %}" class="{% if url == 'users' %}active{% endif %}" data-tip="Users">{% icon "users" %}<span>Users</span></a>{% endif %}
+
+      {% if portal_role == 'owner' %}
+        <div class="sec"><span>AI</span></div>
+        <a href="{% url 'portal:ai_providers' %}" class="{% if url == 'ai_providers' or url == 'ai_provider' or url == 'ai_provider_add' %}active{% endif %}" data-tip="AI providers">{% icon "sparkles" %}<span>AI providers</span>{% if console.providers_failing %}<em class="tag alert">{{ console.providers_failing|length }}</em>{% endif %}</a>
+      {% endif %}
+
+      {% if portal_role == 'owner' or portal_role == 'support' %}
+        <div class="sec"><span>Security</span></div>
+        <a href="{% url 'portal:security' %}" class="{% if url == 'security' %}active{% endif %}" data-tip="Security centre">{% icon "shield" %}<span>Security centre</span></a>
+        <a href="{% url 'portal:audit' %}" class="{% if url == 'audit' %}active{% endif %}" data-tip="Audit log">{% icon "history" %}<span>Audit log</span></a>
+      {% endif %}
+
+      <div class="sec"><span>System</span></div>
+      {% if portal_role == 'owner' %}<a href="{% url 'portal:settings' %}" class="{% if url == 'settings' %}active{% endif %}" data-tip="Platform settings">{% icon "settings" %}<span>Platform settings</span>{% if console.maintenance %}<em class="tag alert">maint.</em>{% endif %}</a>{% endif %}
+      {% if portal_role == 'owner' or portal_role == 'support' %}<a href="{% url 'portal:system' %}" class="{% if url == 'system' %}active{% endif %}" data-tip="System health">{% icon "gauge" %}<span>System health</span>{% if platform_badges.problems %}<em class="tag alert">{{ platform_badges.problems }}</em>{% endif %}</a>{% endif %}
+      <a href="{% url 'portal:guide' %}" class="{% if url == 'guide' %}active{% endif %}" data-tip="Console guide">{% icon "book" %}<span>Console guide</span></a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <a class="exit-workspace" href="{% url 'dashboard' %}" data-tip="Exit to workspace">{% icon "logout" 16 %}<span>Exit to workspace</span></a>
+      <div class="user-row">
+        <details class="menu user-menu">
+          <summary class="user-card" aria-label="Account menu" data-tip="{{ user.username }}">
+            <span class="avatar">{{ user.username|initials }}</span>
+            <span class="who"><strong>{{ user.get_full_name|default:user.username }}</strong><span class="small faint">Console {{ portal_role }}</span></span>
+          </summary>
+          <div class="menu-panel up">
+            <a href="{% url 'portal:two_factor' %}">{% icon "lock" 16 %} Two-factor sign-in</a>
+            <a href="{% url 'password_change' %}">{% icon "key" 16 %} Change password</a>
+            {% if user.is_superuser %}<a href="{% url 'admin:index' %}">{% icon "code" 16 %} Django admin</a>{% endif %}
+            <button type="button" data-theme-toggle>{% icon "moon" 16 %} Toggle dark mode</button>
+            <form method="post" action="{% url 'logout' %}" data-confirm="You will need to sign in again." data-confirm-title="Sign out?" data-confirm-label="Sign out" data-confirm-tone="neutral">{% csrf_token %}<button>{% icon "logout" 16 %} Log out</button></form>
+          </div>
+        </details>
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" data-nav-close></div>
+
+  <div class="main">
+    <header class="topbar console-topbar">
+      <button class="btn btn-ghost btn-icon" type="button" data-sidebar-toggle aria-label="Toggle sidebar" title="Toggle sidebar">{% icon "panel" 20 %}</button>
+      <span class="divider hide-mobile"></span>
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <a href="{% url 'portal:overview' %}" class="hide-mobile">Platform Console</a>
+        <span class="hide-mobile sep">/</span>
+        <span class="current">{% block crumb %}Dashboard{% endblock %}</span>
+      </nav>
+      <div class="topbar-right console-status">
+        <span class="pill env {{ console.environment|lower }}" title="Environment">{{ console.environment }}</span>
+        {% if console.maintenance %}
+          <a class="pill bad" href="{% url 'portal:settings' %}#maintenance" title="Everyone except platform staff sees the maintenance page">{% icon "alert" 13 %} Maintenance on</a>
+        {% endif %}
+        {% if portal_role == 'owner' %}
+          <a class="pill {% if console.providers_failing %}warn{% elif not console.providers %}bad{% else %}good{% endif %}" href="{% url 'portal:ai_providers' %}"
+             title="{% if console.providers_failing %}Failing their last test: {{ console.providers_failing|join:', ' }}{% else %}Enabled AI providers{% endif %}">
+            {% icon "sparkles" 13 %} {{ console.providers }} AI provider{{ console.providers|pluralize }}{% if console.providers_failing %} · {{ console.providers_failing|length }} failing{% endif %}
+          </a>
+        {% endif %}
+        <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle title="Toggle light/dark mode" aria-label="Toggle theme">
+          <span class="theme-dark">{% icon "moon" 19 %}</span><span class="theme-light" hidden>{% icon "sun" 19 %}</span>
+        </button>
+      </div>
+    </header>
+    <main class="page">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<div class="palette-wrap" id="palette" hidden data-search-url="{% url 'portal:search' %}">
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Search the platform">
+    <label class="palette-input">{% icon "search" 18 %}<input type="text" id="palette-q" placeholder="Search organizations, users, API keys and console pages…" autocomplete="off" aria-label="Search"><kbd>Esc</kbd></label>
+    <div class="palette-results" id="palette-results" role="listbox"></div>
+    <div class="palette-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Ctrl K</kbd> anywhere</span></div>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

@@ -1,0 +1,210 @@
+{% extends "portal/base.html" %}
+{% load humanize ui %}
+{% block title %}{{ org.name }} · Platform Console{% endblock %}
+{% block crumb %}<a href="{% url 'portal:organizations' %}">Organizations</a> <span class="sep">/</span> {{ org.name }}{% endblock %}
+{% block style %}{% include "partials/question_styles.css" %}
+.lifecycle { display: grid; gap: 12px; }
+.lc-row { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.lc-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.lc-row .t strong { display: block; font-size: .92rem; }
+.lc-row .t span { font-size: .84rem; color: var(--text-2); }
+.lc-row form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
+.status-note { padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; font-size: .9rem; }
+.status-note.bad { background: var(--bad-soft); color: var(--bad); }
+.status-note.warn { background: var(--warn-soft); color: var(--warn); }
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ org.name }}
+      {% if org.deletion_scheduled_at %}<span class="badge bad" style="vertical-align:middle">Deleting</span>
+      {% elif org.is_active %}<span class="badge good" style="vertical-align:middle">Active</span>
+      {% else %}<span class="badge bad" style="vertical-align:middle">Suspended</span>{% endif %}
+      <span class="badge plain" style="vertical-align:middle">{{ org.plan.name|default:"Custom limits" }}</span>
+    </h1>
+    <p><code>{{ org.slug }}</code> · created {{ org.created_at|date:"j M Y" }} · owner {{ s.owner|default:"none" }}</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    {% if portal_role == 'owner' or portal_role == 'support' %}
+      <form method="post" action="{% url 'portal:support_start' org.pk %}" class="inline"
+            data-confirm-title="View {{ org.name }} in support mode?" data-confirm="You'll see its pages as an admin would, read-only. The visit is recorded in the audit log." data-confirm-label="Enter support mode" data-confirm-tone="neutral">
+        {% csrf_token %}<button class="btn">{% icon "eye" 16 %} View as this organization</button></form>
+    {% endif %}
+    {% if portal_role == 'owner' %}
+      <a class="btn" href="{% url 'portal:organization_export' org.pk %}">{% icon "upload" 16 %} Export data</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if org.deletion_scheduled_at %}
+  <div class="status-note bad">{% icon "alert" 15 %} Offline and scheduled for deletion on <strong>{{ org.deletion_scheduled_at|date:"j M Y" }}</strong> ({{ org.deletion_scheduled_at|naturaltime }}). {% if org.suspended_reason %}Reason: {{ org.suspended_reason }}{% endif %}</div>
+{% elif not org.is_active %}
+  <div class="status-note warn">{% icon "lock" 15 %} Suspended {{ org.suspended_at|naturaltime|default:"" }}{% if org.suspended_reason %}: {{ org.suspended_reason }}{% endif %}. Members can't open it and its API keys return 401.</div>
+{% endif %}
+
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px">
+  <div class="card" style="margin:0"><div class="stat-value">{{ s.members }}{% if org.plan.max_members %}<span class="faint" style="font-size:1rem"> / {{ org.plan.max_members }}</span>{% endif %}</div><div class="stat-label">Members</div></div>
+  <div class="card" style="margin:0"><div class="stat-value">{{ s.docs_ready }}{% if org.plan.max_documents %}<span class="faint" style="font-size:1rem"> / {{ org.plan.max_documents }}</span>{% endif %}</div><div class="stat-label">Ready documents · {{ s.storage|filesizeformat }}</div></div>
+  <div class="card" style="margin:0"><div class="stat-value">{{ s.questions }}</div><div class="stat-label">Questions · 30 days ({{ s.api_questions }} API)</div></div>
+  <div class="card" style="margin:0"><div class="stat-value">{% if s.success_pct is not None %}{{ s.success_pct }}%{% else %}–{% endif %}</div><div class="stat-label">Success · {{ s.failed }} failed</div></div>
+  <div class="card" style="margin:0"><div class="stat-value">{{ queries_this_month }}{% if org.monthly_query_limit %}<span class="faint" style="font-size:1rem"> / {{ org.monthly_query_limit }}</span>{% endif %}</div><div class="stat-label">This month</div>
+    {% if org.monthly_query_limit %}<div class="progress"><span style="width:{% widthratio queries_this_month org.monthly_query_limit 100 %}%"></span></div>{% endif %}</div>
+</div>
+
+{% if portal_role == 'owner' %}
+<div class="grid-2" style="align-items:start">
+  <div class="card">
+    <h2>Plan &amp; limits</h2>
+    <form method="post" action="{% url 'portal:organization_action' org.pk %}" class="form" style="margin-bottom:16px">
+      {% csrf_token %}<input type="hidden" name="action" value="set_plan">
+      <div><label for="plan">Plan</label>
+        <select id="plan" name="plan">
+          <option value="">Custom limits</option>
+          {% for p in plans %}<option value="{{ p.pk }}" {% if org.plan_id == p.pk %}selected{% endif %}>{{ p.name }} · {{ p.monthly_query_limit|default:"unlimited" }} questions/month</option>{% endfor %}
+        </select>
+        <div class="helptext">A plan sets the monthly limit, document and member caps, and whether cloud AI is allowed. <a href="{% url 'portal:plans' %}">Manage plans</a></div></div>
+      <button class="btn btn-primary" type="submit">Apply plan</button>
+    </form>
+    <form method="post" action="{% url 'portal:organization_action' org.pk %}" class="form">
+      {% csrf_token %}<input type="hidden" name="action" value="limits">
+      <div><label for="lim">Monthly question limit</label><input id="lim" type="number" min="0" name="monthly_query_limit" value="{{ org.monthly_query_limit }}"><div class="helptext">0 means unlimited. Overrides the plan's limit until the plan is applied again.</div></div>
+      <div><label for="mdl">Gemini model</label><input id="mdl" type="text" name="llm_model" value="{{ org.llm_model }}" placeholder="Platform default"><div class="helptext">Currently answering with <code>{{ org.effective_model }}</code>.</div></div>
+      <button class="btn" type="submit">Save limits</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Members</h2>
+    {% for m in members %}
+      <div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span class="avatar" style="width:30px;height:30px;font-size:.72rem">{{ m.user.username|initials }}</span>
+        <span style="flex:1;min-width:0"><strong>{{ m.user.username }}</strong>{% if not m.user.is_active %} <span class="badge bad plain">Deactivated</span>{% endif %}<br><span class="small faint">last sign-in {{ m.user.last_login|naturaltime|default:"never" }}</span></span>
+        <form method="post" action="{% url 'portal:organization_action' org.pk %}" class="inline">
+          {% csrf_token %}<input type="hidden" name="action" value="set_role"><input type="hidden" name="membership" value="{{ m.pk }}">
+          <select name="role" onchange="this.form.submit()" aria-label="Role for {{ m.user.username }}" style="width:auto;padding:5px 8px">
+            {% for value, label in roles %}<option value="{{ value }}" {% if value == m.role %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </form>
+        <form method="post" action="{% url 'portal:organization_action' org.pk %}" class="inline" data-confirm="Remove {{ m.user.username }} from {{ org.name }}?">
+          {% csrf_token %}<input type="hidden" name="action" value="remove_member"><input type="hidden" name="membership" value="{{ m.pk }}">
+          <button class="btn btn-sm btn-ghost btn-danger btn-icon" title="Remove">{% icon "trash" 15 %}<span class="sr-only">Remove</span></button>
+        </form>
+      </div>
+    {% empty %}<p class="muted">No members.</p>{% endfor %}
+    <form method="post" action="{% url 'portal:organization_action' org.pk %}" style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      {% csrf_token %}<input type="hidden" name="action" value="add_member">
+      <input type="text" name="username" placeholder="Existing username" aria-label="Username to add" required style="flex:1;min-width:160px">
+      <select name="role" aria-label="Role" style="width:auto">{% for value, label in roles %}<option value="{{ value }}" {% if value == 'member' %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      <button class="btn" type="submit">{% icon "plus" 15 %} Add</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="card"><h2>Members</h2>
+  {% for m in members %}<span class="badge plain" style="margin:0 6px 6px 0">{{ m.user.username }} · {{ m.get_role_display }}</span>{% empty %}<p class="muted" style="margin:0">No members.</p>{% endfor %}
+</div>
+{% endif %}
+
+<div class="card flush">
+  <div class="card-head" style="padding:18px 20px 0">
+    <h2 style="margin:0">Documents</h2>
+    {% if s.docs_failed and portal_role == 'owner' %}
+      <form method="post" action="{% url 'portal:organization_action' org.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="reindex_failed">
+        <button class="btn btn-sm">{% icon "refresh" 15 %} Re-index {{ s.docs_failed }} failed</button></form>
+    {% endif %}
+  </div>
+  <div class="table-wrap" style="margin-top:10px"><table data-table data-label="documents">
+    <thead><tr><th>Name</th><th>Status</th><th class="num">Pages</th><th class="num">Chunks</th><th class="num">Size</th><th>Uploaded</th></tr></thead>
+    <tbody>
+      {% for d in documents %}
+        <tr><td><strong>{{ d.original_name }}</strong>{% if d.error %}<div class="small" style="color:var(--bad)">{{ d.error }}</div>{% endif %}</td>
+          <td>{% if d.is_paused %}<span class="badge">Paused</span>{% elif d.status == 'ready' %}<span class="badge good">Ready</span>{% elif d.status == 'failed' %}<span class="badge bad">Failed</span>{% else %}<span class="badge warn">{{ d.get_status_display }}</span>{% endif %}</td>
+          <td class="num">{{ d.page_count }}</td><td class="num">{{ d.chunk_count }}</td><td class="num small" data-sort="{{ d.size }}">{{ d.size|filesizeformat }}</td>
+          <td class="small muted" data-sort="{{ d.created_at|date:'c' }}">{{ d.created_at|naturaltime }}{% if d.uploaded_by %} · {{ d.uploaded_by.username }}{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="6" class="muted">No documents.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="card flush">
+  <div class="card-head" style="padding:18px 20px 0"><h2 style="margin:0">API keys</h2>
+    {% if portal_role == 'owner' and keys %}
+      <form method="post" action="{% url 'portal:organization_action' org.pk %}" class="inline"
+            data-confirm-title="Revoke every API key of {{ org.name }}?" data-confirm="Every app using them stops working immediately. Use this when keys may have leaked." data-confirm-label="Revoke all" data-confirm-type="{{ org.name }}">
+        {% csrf_token %}<input type="hidden" name="action" value="revoke_all_keys"><button class="btn btn-sm btn-danger">Revoke all</button></form>
+    {% endif %}
+  </div>
+  <div class="table-wrap" style="margin-top:10px"><table data-table data-label="API keys">
+    <thead><tr><th>Name</th><th>Key</th><th>Status</th><th>Last used</th><th>Created</th><th data-nosort></th></tr></thead>
+    <tbody>
+      {% for k in keys %}
+        <tr><td><strong>{{ k.name }}</strong></td><td><code>{{ k.prefix }}…</code></td>
+          <td>{% if k.is_active %}<span class="badge good">Active</span>{% else %}<span class="badge bad">Revoked</span>{% endif %}</td>
+          <td class="small muted" data-sort="{{ k.last_used_at|date:'c' }}">{{ k.last_used_at|naturaltime|default:"never" }}</td>
+          <td class="small muted" data-sort="{{ k.created_at|date:'c' }}">{{ k.created_at|date:"j M Y" }}{% if k.created_by %} · {{ k.created_by.username }}{% endif %}</td>
+          <td>{% if k.is_active and portal_role == 'owner' %}<form method="post" action="{% url 'portal:organization_action' org.pk %}" class="inline" data-confirm="Revoke {{ k.name }}?">{% csrf_token %}<input type="hidden" name="action" value="revoke_key"><input type="hidden" name="key" value="{{ k.pk }}"><button class="btn btn-sm btn-danger">Revoke</button></form>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="6" class="muted">No API keys.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+{% if recent %}
+<div class="card" id="questions">
+  <h2>Recent questions</h2>
+  <div class="qlist">{% for r in recent %}{% include "chat/_question_row.html" %}{% endfor %}</div>
+</div>
+{% endif %}
+
+<div class="grid-2" style="align-items:start">
+  <div class="card">
+    <h2>Console actions on {{ org.name }}</h2>
+    {% for a in actions %}
+      <div style="display:flex;gap:10px;padding:6px 0;font-size:.88rem"><code>{{ a.action }}</code><span style="flex:1">{{ a.target }}{% if a.detail %} <span class="faint">· {{ a.detail }}</span>{% endif %}</span><span class="small faint">{{ a.actor.username|default:"system" }} · {{ a.created_at|naturaltime }}</span></div>
+    {% empty %}<p class="muted" style="margin:0">None yet.</p>{% endfor %}
+  </div>
+
+  {% if portal_role == 'owner' %}
+  <div class="card danger-zone">
+    <h2>Lifecycle</h2>
+    <div class="lifecycle">
+      {% if not org.deletion_scheduled_at %}
+        <div class="lc-row">
+          {% if org.is_active %}
+            <span class="t"><strong>Suspend</strong><span>Members can't open it and its API keys stop. Data is kept.</span></span>
+            <form method="post" action="{% url 'portal:organization_action' org.pk %}" data-confirm-title="Suspend {{ org.name }}?" data-confirm="Its members and API keys stop working immediately.">
+              {% csrf_token %}<input type="hidden" name="action" value="suspend">
+              <input type="text" name="reason" placeholder="Reason (required)" required aria-label="Reason for suspending" style="width:200px">
+              <button class="btn btn-danger">{% icon "lock" 15 %} Suspend</button>
+            </form>
+          {% else %}
+            <span class="t"><strong>Reactivate</strong><span>Members and API keys work again.</span></span>
+            <form method="post" action="{% url 'portal:organization_action' org.pk %}">{% csrf_token %}<input type="hidden" name="action" value="activate"><button class="btn btn-primary">{% icon "check" 15 %} Activate</button></form>
+          {% endif %}
+        </div>
+        <div class="lc-row">
+          <span class="t"><strong>Schedule deletion</strong><span>Goes offline now and is deleted for good in {{ grace_days }} days. You can cancel until then. Export the data first if it might be needed.</span></span>
+          <form method="post" action="{% url 'portal:organization_action' org.pk %}"
+                data-confirm-title="Schedule {{ org.name }} for deletion?" data-confirm="It goes offline now. In {{ grace_days }} days all its documents, files, passages, chats, members' access and API keys are deleted for good." data-confirm-label="Schedule deletion" data-confirm-type="{{ org.name }}">
+            {% csrf_token %}<input type="hidden" name="action" value="schedule_delete">
+            <input type="text" name="reason" placeholder="Reason (optional)" aria-label="Reason for deleting" style="width:200px">
+            <button class="btn btn-danger">{% icon "trash" 15 %} Schedule</button>
+          </form>
+        </div>
+      {% else %}
+        <div class="lc-row">
+          <span class="t"><strong>Cancel deletion</strong><span>Brings {{ org.name }} back online with everything intact.</span></span>
+          <form method="post" action="{% url 'portal:organization_action' org.pk %}">{% csrf_token %}<input type="hidden" name="action" value="cancel_delete"><button class="btn btn-primary">{% icon "refresh" 15 %} Cancel deletion</button></form>
+        </div>
+        <div class="lc-row">
+          <span class="t"><strong>Delete now</strong><span>Skip the rest of the grace period. This can't be undone.</span></span>
+          <form method="post" action="{% url 'portal:organization_action' org.pk %}"
+                data-confirm-title="Delete {{ org.name }} now?" data-confirm="Everything in it is removed permanently. This can't be undone." data-confirm-label="Delete permanently" data-confirm-type="{{ org.name }}">
+            {% csrf_token %}<input type="hidden" name="action" value="delete_now"><button class="btn btn-danger">{% icon "trash" 15 %} Delete now</button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% load humanize ui %}
+{% block title %}Home · {{ organization.name }}{% endblock %}
+{% block crumb %}Home{% endblock %}
+{% block style %}
+.home-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.home-head h1 { font-size: 1.75rem; }
+.home-head p { margin: 6px 0 0; color: var(--text-2); }
+.home-head .home-time { margin-top: 4px; font-size: .86rem; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.seg { display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.seg a { padding: 6px 12px; border-radius: 7px; font-size: .86rem; color: var(--text-2); border: 1px solid transparent; }
+.seg a:hover { text-decoration: none; color: var(--text); }
+.seg a.on { background: var(--surface); border-color: var(--border); color: var(--text); font-weight: 600; box-shadow: var(--shadow-sm); }
+
+/* KPI cards */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.kpis.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1000px) { .kpis, .kpis.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .kpis, .kpis.three { grid-template-columns: minmax(0, 1fr); } }
+.kpi2 { padding: 18px 20px; margin: 0; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.kpi2 .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.kpi2 .l { font-size: .86rem; color: var(--text-2); display: inline-flex; align-items: center; gap: 7px; }
+.kpi2 .l svg { color: var(--text-3); }
+.kpi2 .v { font-size: 2rem; font-weight: 650; letter-spacing: -0.03em; margin: 8px 0 4px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.kpi2 .v small { font-size: 1rem; font-weight: 500; color: var(--text-2); margin-left: 2px; }
+.kpi2 .s { font-size: .84rem; color: var(--text-2); margin-top: auto; }
+.kpi2 .spark { position: absolute; right: 0; bottom: 0; width: 46%; height: 44px; opacity: .9; pointer-events: none; }
+.kpi2 .spark polyline { fill: none; stroke: var(--text-3); stroke-width: 1.6; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.meter { height: 5px; border-radius: 999px; background: var(--surface-3); margin: 8px 0 10px; overflow: hidden; }
+.meter span { display: block; height: 100%; border-radius: 999px; background: var(--good); }
+.delta { display: inline-flex; align-items: center; gap: 3px; font-size: .74rem; font-weight: 650; padding: 2px 7px; border-radius: 999px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.delta.good { background: var(--good-soft); color: var(--good); }
+.delta.bad { background: var(--bad-soft); color: var(--bad); }
+.delta.flat { background: var(--surface-2); color: var(--text-3); }
+
+/* Layout */
+.row2 { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; align-items: stretch; }
+.row3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .row3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .row2, .row3 { grid-template-columns: minmax(0, 1fr); } }
+.row2 > .card, .row3 > .card { margin: 0; min-width: 0; }
+.card-head .sub { font-size: .84rem; color: var(--text-2); margin-top: 3px; font-weight: 400; }
+.card-head > div h2 { margin: 0; }
+.more { font-size: .84rem; font-weight: 550; white-space: nowrap; }
+
+/* Activity chart */
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .82rem; color: var(--text-2); }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.o-answered { background: var(--text); }
+.o-not_covered { background: var(--warn); }
+.o-failed { background: var(--bad); }
+.chart { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; margin-top: 6px; }
+.chart .y { display: flex; flex-direction: column; justify-content: space-between; font-size: .72rem; color: var(--text-3); text-align: right; height: 190px; padding-top: 8px; box-sizing: border-box; font-variant-numeric: tabular-nums; }
+.chart .y span:last-child { margin-bottom: -6px; }
+.bars { height: 190px; display: flex; align-items: stretch; gap: 3px; border-bottom: 1px solid var(--border-strong); padding-top: 14px; box-sizing: border-box;
+  background: linear-gradient(var(--border) 1px, transparent 1px) 0 14px / 100% calc((100% - 14px) / 2) repeat-y; }
+.bars.many { gap: 2px; }
+.abar { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; border-radius: 6px 6px 0 0; cursor: default; }
+.abar:hover { background: var(--surface-2); }
+.abar .stack { flex-shrink: 0; width: min(100%, 22px); display: flex; flex-direction: column-reverse; border-radius: 5px 5px 0 0; overflow: hidden; }
+.abar .seg-b { display: block; width: 100%; }
+.abar .stub { width: min(100%, 22px); height: 2px; border-radius: 2px; background: var(--border-strong); }
+.abar .val { flex-shrink: 0; font-size: .7rem; font-weight: 650; color: var(--text-2); margin-bottom: 3px; font-variant-numeric: tabular-nums; line-height: 1; }
+.bars.many .abar .val { font-size: .62rem; }
+.act-sum { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0 0 14px; font-size: .86rem; color: var(--text-2); }
+.act-sum b { color: var(--text); font-size: 1.05rem; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.abar .tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 5;
+  background: var(--text); color: var(--bg); font-size: .76rem; line-height: 1.45; padding: 7px 10px; border-radius: 8px; white-space: nowrap; box-shadow: var(--shadow-lg); }
+.abar:hover .tip { display: block; }
+.abar:first-child .tip, .abar:nth-child(2) .tip { left: 0; transform: none; }
+.abar:last-child .tip, .abar:nth-last-child(2) .tip { left: auto; right: 0; transform: none; }
+.x { display: flex; justify-content: space-between; font-size: .72rem; color: var(--text-3); margin: 6px 0 0 36px; }
+.chart-empty { height: 190px; display: grid; place-items: center; color: var(--text-3); font-size: .9rem; border: 1px dashed var(--border); border-radius: 10px; }
+
+/* Answer quality donut */
+.donut-wrap { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.donut { width: 148px; height: 148px; flex-shrink: 0; position: relative; margin: 0; }
+.donut svg { width: 100%; height: 100%; transform: none; }
+.donut .ring { fill: none; stroke: var(--surface-3); stroke-width: 5; }
+.donut .part { fill: none; stroke-width: 5; }
+.donut .p-answered { stroke: var(--text); } .donut .p-not_covered { stroke: var(--warn); } .donut .p-failed { stroke: var(--bad); }
+.donut .mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.donut .mid b { font-size: 1.6rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.donut .mid span { font-size: .76rem; color: var(--text-2); }
+.q-list { flex: 1; min-width: 160px; display: grid; gap: 12px; }
+.q-item { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 9px; align-items: center; font-size: .88rem; }
+.q-item i { width: 9px; height: 9px; border-radius: 3px; }
+.q-item b { font-variant-numeric: tabular-nums; }
+.q-item .pct { grid-column: 2 / 4; font-size: .78rem; color: var(--text-3); margin-top: -3px; }
+.q-foot { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); font-size: .85rem; color: var(--text-2); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+
+/* Lists */
+.attn { display: flex; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.attn:last-child { border-bottom: 0; padding-bottom: 0; }
+.attn:first-of-type { padding-top: 0; }
+.attn .ico { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; background: var(--surface-2); flex-shrink: 0; }
+.attn .ico.bad { background: var(--bad-soft); color: var(--bad); }
+.attn .ico.warn { background: var(--warn-soft); color: var(--warn); }
+.attn .t { flex: 1; min-width: 0; }
+.attn .t strong { display: block; font-size: .93rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attn .t span { font-size: .84rem; color: var(--text-2); }
+.rank { display: grid; gap: 13px; }
+.rank-row { font-size: .9rem; }
+.rank-row .row { display: flex; justify-content: space-between; gap: 10px; }
+.rank-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.rank-row .cnt { color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.track { height: 6px; background: var(--surface-3); border-radius: 999px; margin-top: 6px; overflow: hidden; }
+.fill { height: 6px; background: var(--text); border-radius: 999px; }
+.fill.zero { background: transparent; }
+.tag-p { font-size: .7rem; font-weight: 600; padding: 1px 6px; border-radius: 999px; background: var(--surface-2); color: var(--text-3); margin-left: 6px; }
+.hint { margin: 14px 0 0; font-size: .84rem; color: var(--text-2); display: flex; gap: 8px; align-items: flex-start; }
+.hint svg { flex-shrink: 0; margin-top: 2px; color: var(--warn); }
+
+/* Sources */
+.src-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; gap: 2px; background: var(--surface-3); }
+.src-bar span { display: block; height: 100%; }
+.sh1 { background: var(--text); } .sh2 { background: var(--text-2); } .sh3 { background: var(--text-3); } .sh4 { background: var(--border-strong); }
+.src-legend { display: grid; gap: 10px; margin-top: 16px; font-size: .88rem; }
+.src-legend div { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.src-legend span { display: inline-flex; align-items: center; min-width: 0; }
+.src-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 8px; flex-shrink: 0; }
+.src-legend b { font-variant-numeric: tabular-nums; font-weight: 600; }
+.src-legend em { font-style: normal; color: var(--text-3); font-weight: 400; margin-left: 6px; font-size: .8rem; }
+
+/* Busiest times */
+.heat { display: grid; grid-template-columns: 30px repeat(24, minmax(0, 1fr)); gap: 3px; font-size: .7rem; color: var(--text-3); }
+.heat .d { display: flex; align-items: center; }
+.heat .c { aspect-ratio: 1; border-radius: 3px; background: var(--surface-2); min-height: 9px; }
+.heat .c.l1 { background: color-mix(in srgb, var(--text) 18%, var(--surface-2)); }
+.heat .c.l2 { background: color-mix(in srgb, var(--text) 40%, var(--surface-2)); }
+.heat .c.l3 { background: color-mix(in srgb, var(--text) 65%, var(--surface-2)); }
+.heat .c.l4 { background: var(--text); }
+.heat .hx { grid-column: span 6; padding-top: 2px; }
+.heat-key { display: flex; align-items: center; gap: 4px; font-size: .74rem; color: var(--text-3); }
+.heat-key .c { width: 10px; height: 10px; border-radius: 3px; }
+{% endblock %}
+{% block content %}
+<div class="home-head">
+  <div>
+    <h1 id="greeting" data-name="{{ greeting_name }}">{{ greeting }}</h1>
+    <p class="home-time" id="home-time">{{ now|date:"l j F Y · H:i" }}</p>
+    <p>{% if membership.is_admin %}Here is how {{ organization.name }}'s assistant is doing over the last {{ days }} days.{% else %}Ask anything about {{ organization.name }}'s documents.{% endif %}</p>
+  </div>
+  <nav class="seg" aria-label="Period">
+    {% for p in periods %}<a href="?period={{ p }}" class="{% if p == days %}on{% endif %}">{{ p }} days</a>{% endfor %}
+  </nav>
+</div>
+
+{# ---- Headline numbers, each compared with the previous period ---- #}
+<div class="kpis{% if not membership.is_admin %} three{% endif %}">
+  <div class="card kpi2">
+    <div class="top"><span class="l">{% icon "chat" 15 %} Questions</span>{% if questions_delta %}<span class="delta {{ questions_delta.tone }}" title="Compared with the previous {{ days }} days">{% if questions_delta.dir == 'up' %}↑{% elif questions_delta.dir == 'down' %}↓{% endif %} {{ questions_delta.text }}</span>{% endif %}</div>
+    <div class="v">{{ total|intcomma }}</div>
+    <div class="s">{% if total %}{{ people }} {{ people|pluralize:"person,people" }}{% if apps %} · {{ apps }} app{{ apps|pluralize }} via API{% endif %}{% else %}None in the last {{ days }} days{% endif %}</div>
+    {% if sparkline %}<svg class="spark" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true"><polyline points="{{ sparkline }}"/></svg>{% endif %}
+  </div>
+
+  <div class="card kpi2">
+    <div class="top"><span class="l">{% icon "check" 15 %} Answered from documents</span>{% if success_delta %}<span class="delta {{ success_delta.tone }}" title="Compared with the previous {{ days }} days">{% if success_delta.dir == 'up' %}↑{% elif success_delta.dir == 'down' %}↓{% endif %} {{ success_delta.text }}</span>{% endif %}</div>
+    <div class="v">{% if success_pct is not None %}{{ success_pct }}<small>%</small>{% else %}–{% endif %}</div>
+    {% if success_pct is not None %}<div class="meter" aria-hidden="true"><span style="width:{{ success_pct }}%"></span></div>{% endif %}
+    <div class="s">{% if answer_count %}{{ answered_ok }} of {{ answer_count }} answers{% else %}No answers yet{% endif %}</div>
+  </div>
+
+  {% if membership.is_admin %}
+  <div class="card kpi2">
+    <div class="top"><span class="l">{% icon "thumbs-up" 15 %} Rated helpful</span>{% if helpful_delta %}<span class="delta {{ helpful_delta.tone }}" title="Compared with the previous {{ days }} days">{% if helpful_delta.dir == 'up' %}↑{% elif helpful_delta.dir == 'down' %}↓{% endif %} {{ helpful_delta.text }}</span>{% endif %}</div>
+    <div class="v">{% if helpful_pct is not None %}{{ helpful_pct }}<small>%</small>{% else %}–{% endif %}</div>
+    {% if helpful_pct is not None %}<div class="meter" aria-hidden="true"><span style="width:{{ helpful_pct }}%"></span></div>{% endif %}
+    <div class="s">{% if rated %}From {{ rated }} rating{{ rated|pluralize }}{% else %}No ratings yet{% endif %}</div>
+  </div>
+  <div class="card kpi2">
+    <div class="top"><span class="l">{% icon "clock" 15 %} Avg. answer time</span>{% if avg_delta %}<span class="delta {{ avg_delta.tone }}" title="Compared with the previous {{ days }} days. Lower is better.">{% if avg_delta.dir == 'up' %}↑{% elif avg_delta.dir == 'down' %}↓{% endif %} {{ avg_delta.text }}</span>{% endif %}</div>
+    <div class="v">{% if avg_all %}{{ avg_all|floatformat:1 }}<small>s</small>{% else %}–{% endif %}</div>
+    <div class="s">{% if avg_web %}Web {{ avg_web|floatformat:1 }} s{% endif %}{% if avg_web and avg_api %} · {% endif %}{% if avg_api %}API {{ avg_api|floatformat:1 }} s{% endif %}{% if not avg_all %}No answers yet{% endif %}</div>
+  </div>
+  {% else %}
+  <div class="card kpi2">
+    <div class="top"><span class="l">{% icon "book" 15 %} Knowledge base</span></div>
+    <div class="v">{{ docs }}<small> doc{{ docs|pluralize }}</small></div>
+    <div class="s">{{ pages|intcomma }} pages · {{ chunks|intcomma }} passages</div>
+  </div>
+  {% endif %}
+</div>
+
+{# ---- Activity over time + answer quality ---- #}
+<div class="row2">
+  <section class="card">
+    <div class="card-head">
+      <div><h2>Activity</h2><div class="sub">Answers per {% if activity.weekly %}week{% else %}day{% endif %}, by how they turned out</div></div>
+      <div class="legend"><span><i class="o-answered"></i>Answered</span><span><i class="o-not_covered"></i>Not covered</span><span><i class="o-failed"></i>Failed</span></div>
+    </div>
+    {% if activity.peak %}
+      <div class="act-sum">
+        <span><b>{{ activity.total }}</b>answer{{ activity.total|pluralize }}</span>
+        <span><b>{{ activity.active }}</b>of {{ activity.bars|length }} {% if activity.weekly %}weeks{% else %}days{% endif %} active</span>
+        <span>Busiest: <strong style="color:var(--text)">{{ activity.busiest.label }}</strong> ({{ activity.busiest.total }})</span>
+      </div>
+      <div class="chart">
+        <div class="y" aria-hidden="true"><span>{{ activity.top }}</span><span>{{ activity.mid }}</span><span>0</span></div>
+        <div class="bars{% if activity.bars|length > 20 %} many{% endif %}" role="img" aria-label="Answers per {% if activity.weekly %}week{% else %}day{% endif %} over the last {{ days }} days">
+          {% for b in activity.bars %}
+            <div class="abar">
+              {% if b.total %}<span class="val">{{ b.total }}</span>
+              <span class="stack" style="height:{{ b.h }}%">{% for s in b.segments %}<span class="seg-b o-{{ s.key }}" style="height:{{ s.h }}%"></span>{% endfor %}</span>
+              {% else %}<span class="stub"></span>{% endif %}
+              <span class="tip"><b>{{ b.label }}</b><br>{{ b.total }} answer{{ b.total|pluralize }}{% if b.total %}<br>{{ b.answered }} answered · {{ b.not_covered }} not covered · {{ b.failed }} failed{% endif %}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="x" aria-hidden="true">{% for t in activity.ticks %}<span>{{ t }}</span>{% endfor %}</div>
+    {% else %}
+      <div class="chart-empty">No questions in the last {{ days }} days yet</div>
+    {% endif %}
+  </section>
+
+  {% if membership.is_admin %}
+  <section class="card">
+    <div class="card-head"><div><h2>Answer quality</h2><div class="sub">{{ quality.total }} answer{{ quality.total|pluralize }} in this period</div></div></div>
+    {% if quality.total %}
+      <div class="donut-wrap">
+        <div class="donut">
+          <svg viewBox="0 0 42 42" role="img" aria-label="Answer outcomes">
+            <circle class="ring" cx="21" cy="21" r="15.915"/>
+            {% for p in quality.parts %}{% if p.n %}<circle class="part p-{{ p.key }}" cx="21" cy="21" r="15.915" stroke-dasharray="{{ p.dash }} {{ p.rest }}" stroke-dashoffset="{{ p.offset }}"><title>{{ p.label }}: {{ p.n }}</title></circle>{% endif %}{% endfor %}
+          </svg>
+          <div class="mid"><b>{{ success_pct }}%</b><span>answered</span></div>
+        </div>
+        <div class="q-list">
+          {% for p in quality.parts %}
+            <div class="q-item"><i class="o-{{ p.key }}"></i><span>{{ p.label }}</span><b>{{ p.n }}</b><span class="pct">{{ p.pct }}% of answers</span></div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="q-foot"><span>Questions your documents don't cover are listed as knowledge gaps.</span><a class="more" href="{% url 'chat:gaps' %}">Review gaps →</a></div>
+    {% else %}
+      <div class="chart-empty">No answers yet</div>
+    {% endif %}
+  </section>
+  {% else %}
+  <section class="card">
+    <div class="card-head"><h2>Your recent chats</h2><a class="btn btn-sm" href="{% url 'chat:index' %}">{% icon "plus" 15 %} New chat</a></div>
+    {% for s in recent_chats %}
+      <div class="attn"><span class="ico">{% icon "chat" 17 %}</span>
+        <span class="t"><strong>{{ s.title|default:"Untitled chat" }}</strong><span>{{ s.updated_at|naturaltime }} · {{ s.n }} message{{ s.n|pluralize }}</span></span>
+        <a class="btn btn-sm btn-ghost" href="{% url 'chat:session' s.public_id %}">Open</a></div>
+    {% empty %}
+      <p class="muted" style="margin:0">No chats yet. <a href="{% url 'chat:index' %}">Ask your first question</a>.</p>
+    {% endfor %}
+  </section>
+  {% endif %}
+</div>
+
+{# ---- Admin: what to act on, and when people ask ---- #}
+{% if membership.is_admin %}
+<div class="row2">
+  <section class="card">
+    <div class="card-head"><h2>Needs attention</h2>{% if attention %}<span class="badge bad plain" style="background:var(--bad);color:#fff">{{ attention|length }}</span>{% endif %}</div>
+    {% for a in attention %}
+      <div class="attn">
+        <span class="ico {{ a.tone }}">{% icon a.icon 18 %}</span>
+        <span class="t"><strong>{{ a.title }}</strong><span>{{ a.detail }}</span></span>
+        <a class="btn btn-sm" href="{{ a.url }}">{{ a.action }}</a>
+      </div>
+    {% empty %}
+      <div class="empty-state" style="padding:20px 10px"><div class="stat-icon" style="background:var(--good-soft);color:var(--good)">{% icon "check" 22 %}</div><h3>All clear</h3><p>Nothing needs your attention right now.</p></div>
+    {% endfor %}
+  </section>
+  <section class="card">
+    <div class="card-head"><div><h2>Busiest times</h2><div class="sub">{% if busiest.best %}Peak: {{ busiest.best }}{% else %}When questions are asked{% endif %}</div></div>
+      <div class="heat-key" aria-hidden="true">Less <span class="c" style="background:var(--surface-2)"></span><span class="c" style="background:color-mix(in srgb, var(--text) 18%, var(--surface-2))"></span><span class="c" style="background:color-mix(in srgb, var(--text) 40%, var(--surface-2))"></span><span class="c" style="background:color-mix(in srgb, var(--text) 65%, var(--surface-2))"></span><span class="c" style="background:var(--text)"></span> More</div></div>
+    <div class="heat" role="img" aria-label="Questions by weekday and hour">
+      {% for r in busiest.rows %}
+        <span class="d">{{ r.day }}</span>{% for c in r.cells %}<span class="c l{{ c.level }}" title="{{ c.tip }}"></span>{% endfor %}
+      {% endfor %}
+      <span></span><span class="hx">00</span><span class="hx">06</span><span class="hx">12</span><span class="hx">18</span>
+    </div>
+  </section>
+</div>
+{% endif %}
+
+{# ---- What people ask about, and from where ---- #}
+<div class="row3">
+  <section class="card">
+    <div class="card-head"><div><h2>Top topics</h2><div class="sub">Share of all questions</div></div>{% if membership.is_admin %}<a class="more" href="{% url 'chat:questions' %}#topics">Manage →</a>{% endif %}</div>
+    <div class="rank">
+    {% for t in topics %}
+      <div class="rank-row"><div class="row"><span class="name">{{ t.topic__name }}</span><span class="cnt">{{ t.n }} · {{ t.pct }}%</span></div>
+        <div class="track"><div class="fill" style="width:{{ t.width }}%"></div></div></div>
+    {% empty %}
+      <p class="muted" style="margin:0">No topic data yet.{% if membership.is_admin %} <a href="{% url 'chat:questions' %}#topics">Set up topics</a>.{% endif %}</p>
+    {% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><div><h2>Most-used documents</h2><div class="sub">Answers that cited each document</div></div>{% if membership.is_admin %}<a class="more" href="{% url 'documents:list' %}">All →</a>{% endif %}</div>
+    <div class="rank">
+    {% for d in doc_usage.items %}
+      <div class="rank-row"><div class="row"><span class="name">{{ d.name }}{% if d.paused %}<span class="tag-p">Paused</span>{% endif %}</span><span class="cnt">{% if d.n %}{{ d.n }}{% else %}Not cited{% endif %}</span></div>
+        <div class="track"><div class="fill{% if not d.n %} zero{% endif %}" style="width:{{ d.width }}%"></div></div></div>
+    {% empty %}
+      <p class="muted" style="margin:0">No documents yet.</p>
+    {% endfor %}
+    </div>
+    {% if doc_usage.more %}<p class="small faint" style="margin:12px 0 0">and {{ doc_usage.more }} more</p>{% endif %}
+    {% if membership.is_admin and doc_usage.unused and total %}<p class="hint">{% icon "alert" 15 %}<span>{{ doc_usage.unused }} document{{ doc_usage.unused|pluralize:" was,s were" }} never used in an answer this period. {% if doc_usage.unused == 1 %}It{% else %}They{% endif %} may be outdated or off-topic.</span></p>{% endif %}
+    <p class="small faint" style="margin:14px 0 0">{{ docs }} active doc{{ docs|pluralize }} · {{ pages|intcomma }} pages · {{ chunks|intcomma }} passages{% if paused_docs %} · {{ paused_docs }} paused{% endif %}</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><div><h2>Where questions come from</h2><div class="sub">Web app and each API key</div></div></div>
+    {% if sources %}
+      <div class="src-bar" role="img" aria-label="Share of questions by source">
+        {% for s in sources %}<span class="sh{{ s.shade }}" style="width:{{ s.pct }}%" title="{{ s.name }}: {{ s.n }}"></span>{% endfor %}
+      </div>
+      <div class="src-legend">
+        {% for s in sources %}<div><span><i class="sh{{ s.shade }}"></i>{{ s.name }}</span><b>{{ s.n }}<em>{{ s.pct|floatformat:0 }}%</em></b></div>{% endfor %}
+      </div>
+    {% else %}<p class="muted" style="margin:0">No questions in this period.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}
+{% block script %}
+<script>
+(function () {
+  const h1 = document.getElementById("greeting"), clock = document.getElementById("home-time");
+  function tick() {
+    const now = new Date(), hour = now.getHours();
+    const part = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+    h1.textContent = part + ", " + h1.dataset.name;
+    clock.textContent = now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+      + " · " + now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+  tick();
+  setInterval(tick, 30000);
+})();
+</script>
+{% endblock %}

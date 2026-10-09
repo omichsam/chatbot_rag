@@ -1,0 +1,501 @@
+{% load ui %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}DocAssist{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23171717'/%3E%3Cpath d='M16 7l2.2 6.8L25 16l-6.8 2.2L16 25l-2.2-6.8L7 16l6.8-2.2z' fill='white'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    // Apply saved theme and sidebar state before first paint.
+    try {
+      var t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t;
+      if (localStorage.getItem("sidebar") === "collapsed") document.documentElement.classList.add("pre-collapsed");
+    } catch (e) {}
+  </script>
+  <style>{% include "partials/styles.css" %}{% block style %}{% endblock %}</style>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+<script>if (document.documentElement.classList.contains("pre-collapsed")) document.body.classList.add("sidebar-collapsed");</script>
+{% block body %}
+{% with ns=request.resolver_match.namespace url=request.resolver_match.url_name %}
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    {% if organization %}
+      <details class="menu org-menu">
+        <summary class="org-card-btn" aria-label="Switch organization" data-tip="{{ organization.name }}">
+          <span class="org-logo">{{ organization.name|initials }}</span>
+          <span class="org-text"><strong>{{ organization.name }}</strong><span>{{ membership.get_role_display }} · {{ member_count }} member{{ member_count|pluralize }}</span></span>
+          <svg class="icon chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5"></path><path d="m7 9 5-5 5 5"></path></svg>
+        </summary>
+        <div class="menu-panel org-panel">
+          <div class="head small faint">Your organizations</div>
+          {% for m in user_memberships %}
+            <form method="post" action="{% url 'tenants:switch' %}">{% csrf_token %}
+              <input type="hidden" name="organization" value="{{ m.organization_id }}"><input type="hidden" name="next" value="{% url 'dashboard' %}">
+              <button type="submit"><span class="org-logo sm">{{ m.organization.name|initials }}</span><span style="flex:1">{{ m.organization.name }}<span class="small faint" style="display:block">{{ m.get_role_display }}</span></span>{% if m.organization_id == organization.pk %}{% icon "check" 16 %}{% endif %}</button>
+            </form>
+          {% endfor %}
+          <a href="{% url 'tenants:create' %}" style="border-top:1px solid var(--border);margin-top:4px;padding-top:10px">{% icon "plus" 16 %} New organization</a>
+        </div>
+      </details>
+      <button type="button" class="search-btn" data-palette-open data-tip="Search (Ctrl K)">
+        {% icon "search" 15 %}<span>Search or jump to…</span><kbd>Ctrl K</kbd>
+      </button>
+      <a class="newchat-btn" href="{% url 'chat:index' %}" data-tip="New chat">{% icon "plus" 16 %}<span>New chat</span></a>
+    {% else %}
+      <a class="brand" href="{% url 'dashboard' %}">
+        <span class="logo">{% icon "sparkles" 20 %}</span>
+        <span class="brand-text"><span class="brand-name">DocAssist</span><span class="brand-sub">Document assistant</span></span>
+      </a>
+    {% endif %}
+
+    <nav class="nav" aria-label="Main">
+      {% if portal_role and not support_mode %}
+        <a href="{% url 'portal:overview' %}" class="console-link" data-tip="Platform Console">{% icon "shield" %}<span>Platform Console</span>{% if platform_maintenance %}<em class="tag alert">maint.</em>{% endif %}</a>
+      {% endif %}
+
+      {% if menu %}
+        {% if menu.pinned %}
+          <div class="sec"><span>Pinned</span><button type="button" class="sec-btn" data-customize-open aria-label="Customize menu" title="Customize menu">{% icon "settings" 13 %}</button></div>
+          {% for i in menu.pinned %}{% include "partials/nav_item.html" %}{% endfor %}
+        {% endif %}
+        {% for s in menu.sections %}
+          <div class="sec">
+            <button type="button" class="sec-toggle" data-section-toggle="{{ s.id }}" aria-expanded="true"><span>{{ s.title }}</span>{% icon "chevron-right" 13 "sec-chev" %}</button>
+            {% if forloop.first and not menu.pinned %}<button type="button" class="sec-btn" data-customize-open aria-label="Customize menu" title="Customize menu">{% icon "settings" 13 %}</button>{% endif %}
+          </div>
+          <div class="sec-items" data-section="{{ s.id }}">
+            {% for i in s.items %}{% include "partials/nav_item.html" %}{% endfor %}
+          </div>
+        {% endfor %}
+      {% elif not portal_role %}
+        <div class="sec"><span>Get started</span></div>
+        <a href="{% url 'tenants:create' %}" class="{% if url == 'create' %}active{% endif %}" data-tip="Create organization">{% icon "plus" %}<span>Create organization</span></a>
+      {% endif %}
+    </nav>
+
+    {% if menu and menu.locked_count %}
+      <div class="admin-tools">
+        <div class="t">{% icon "lock" 15 %} Admin tools · {{ menu.locked_count }}</div>
+        <p>{{ menu.locked_labels|join:", " }} are managed by admins.</p>
+        {% if access_pending %}
+          <span class="small faint">{% icon "clock" 13 %} Request sent, waiting for an admin</span>
+        {% else %}
+          <form method="post" action="{% url 'tenants:request_access' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="linkish">Request access</button></form>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="sidebar-foot">
+      {% if ai_status %}
+        <div class="ai-meter {{ ai_status.tone }}" data-tip="AI: {{ ai_status.label }}">
+          <div class="row"><strong>AI usage today</strong><span class="state">{{ ai_status.label }}</span></div>
+          <div class="bar"><span style="width:{% if ai_status.pct is not None %}{{ ai_status.pct }}{% else %}100{% endif %}%"></span></div>
+          <div class="note">{{ ai_status.note }}{% if membership.is_admin %} · <a href="{% url 'chat:analytics' %}">Details</a>{% endif %}</div>
+        </div>
+      {% endif %}
+      <div class="user-row">
+        <details class="menu user-menu">
+          <summary class="user-card" aria-label="Account menu" data-tip="{{ user.username }}">
+            <span class="avatar">{{ user.username|initials }}</span>
+            <span class="who"><strong>{{ user.get_full_name|default:user.username }}</strong><span class="small faint">{% if support_mode %}Support mode{% elif membership %}{{ membership.get_role_display }}{% elif portal_role %}Platform staff{% else %}No organization{% endif %}</span></span>
+          </summary>
+          <div class="menu-panel up">
+            <a href="{% url 'password_change' %}">{% icon "lock" 16 %} Change password</a>
+            {% if menu %}<button type="button" data-customize-open>{% icon "settings" 16 %} Customize menu</button>{% endif %}
+            <a href="{% url 'tenants:create' %}">{% icon "plus" 16 %} New organization</a>
+            {% if portal_role %}<a href="{% url 'portal:overview' %}">{% icon "shield" 16 %} Platform Console</a>{% endif %}{% if user.is_superuser %}<a href="{% url 'admin:index' %}">{% icon "code" 16 %} Django admin</a>{% endif %}
+            <button type="button" data-theme-toggle>{% icon "moon" 16 %} Toggle dark mode</button>
+            <form method="post" action="{% url 'logout' %}" data-confirm="You will need to sign in again to use DocAssist." data-confirm-title="Sign out?" data-confirm-label="Sign out" data-confirm-tone="neutral">{% csrf_token %}<button>{% icon "logout" 16 %} Log out</button></form>
+          </div>
+        </details>
+        {% if organization %}<a class="help-btn" href="{% url 'chat:help' %}" aria-label="Help and guides" title="Help &amp; guides">{% icon "help" 18 %}</a>{% endif %}
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" data-nav-close></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn btn-ghost btn-icon" type="button" data-sidebar-toggle aria-label="Toggle sidebar" title="Toggle sidebar">{% icon "panel" 20 %}</button>
+      <span class="divider hide-mobile"></span>
+      <nav class="crumbs" aria-label="Breadcrumb">
+        {% block crumb_root %}{% if organization %}<a href="{% url 'dashboard' %}" class="hide-mobile">{{ organization.name }}</a>
+        <span class="hide-mobile sep">/</span>{% endif %}{% endblock %}
+        <span class="current">{% block crumb %}Home{% endblock %}</span>
+      </nav>
+      <div class="topbar-right">
+        {% if organization %}
+          <form class="ask-box hide-mobile" method="get" action="{% url 'chat:index' %}" role="search">
+            {% icon "sparkles" 15 %}
+            <input type="text" name="q" placeholder="Ask your documents anything…" aria-label="Ask your documents" autocomplete="off">
+          </form>
+        {% endif %}
+        {% if membership.is_admin %}
+          <details class="menu bell-menu">
+            <summary class="btn btn-ghost btn-icon bell" aria-label="Notifications{% if notifications %}, {{ notifications|length }} new{% endif %}">{% icon "bell" 19 %}{% if notifications %}<span class="bell-dot"></span>{% endif %}</summary>
+            <div class="menu-panel bell-panel">
+              <div class="head"><strong>Needs attention</strong></div>
+              {% for n in notifications %}
+                <a href="{{ n.url }}" class="note-item"><span class="status-dot {% if n.tone == 'bad' %}bad{% else %}unknown{% endif %}"></span><span><strong>{{ n.title }}</strong><span class="small faint">{{ n.detail }}</span></span></a>
+              {% empty %}
+                <p class="small muted" style="padding:6px 10px;margin:0">{% icon "check" 14 %} All clear.</p>
+              {% endfor %}
+            </div>
+          </details>
+        {% endif %}
+        <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle title="Toggle light/dark mode" aria-label="Toggle theme">
+          <span class="theme-dark">{% icon "moon" 19 %}</span><span class="theme-light" hidden>{% icon "sun" 19 %}</span>
+        </button>
+      </div>
+    </header>
+    {% block main %}
+    <main class="page">
+      {% if support_mode %}
+        <div class="support-banner" role="status">
+          {% icon "eye" 16 %}
+          <span><strong>Support mode:</strong> you're viewing {{ organization.name }} as an admin would, read-only. Nothing you do here is saved.</span>
+          <form method="post" action="{% url 'portal:support_exit' %}">{% csrf_token %}<button class="btn btn-sm">Exit support mode</button></form>
+        </div>
+      {% endif %}
+      {% if announcement %}
+        <div class="announce {{ announcement.tone }}" role="status" data-announce="{{ announcement.text|slugify|truncatechars:60 }}">
+          {% if announcement.tone == "warning" %}{% icon "alert" 16 %}{% else %}{% icon "bell" 16 %}{% endif %}
+          <span>{{ announcement.text }}</span>
+          <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Dismiss" onclick="try{sessionStorage.setItem('announce-hidden',this.parentElement.dataset.announce)}catch(e){}this.parentElement.remove()">{% icon "x" 14 %}</button>
+        </div>
+        <script>try{const a=document.currentScript.previousElementSibling;if(sessionStorage.getItem('announce-hidden')===a.dataset.announce)a.remove()}catch(e){}</script>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+    {% endblock %}
+  </div>
+</div>
+
+{% if menu %}
+<div class="palette-wrap" id="palette" hidden data-search-url="{% url 'chat:search' %}">
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Search and commands">
+    <label class="palette-input">{% icon "search" 18 %}<input type="text" id="palette-q" placeholder="Search pages, documents, questions and actions…" autocomplete="off" aria-label="Search"><kbd>Esc</kbd></label>
+    <div class="palette-results" id="palette-results" role="listbox"></div>
+    <div class="palette-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Ctrl K</kbd> anywhere</span></div>
+  </div>
+</div>
+
+<dialog class="customize" id="customize" aria-label="Customize menu">
+  <div class="cz-head"><h2>Customize menu</h2><button type="button" class="btn btn-ghost btn-icon" data-customize-close aria-label="Close">{% icon "x" 16 %}</button></div>
+  <p class="small muted" style="margin:0 0 8px">Drag to reorder, untick to hide, pin up to 5 to the top. Only you see this arrangement.</p>
+  <ul class="cz-list" id="cz-list">
+    {% for i in menu.customizable %}
+      <li draggable="true" data-id="{{ i.id }}" data-pinned="{% if i.pinned %}1{% endif %}">
+        <span class="grip" aria-hidden="true">⋮⋮</span>
+        <label><input type="checkbox" {% if not i.hidden %}checked{% endif %} {% if i.id == 'home' %}disabled{% endif %}> {{ i.label }}</label>
+        <button type="button" class="pin-btn" aria-pressed="{% if i.pinned %}true{% else %}false{% endif %}">{% if i.pinned %}Pinned{% else %}Pin{% endif %}</button>
+      </li>
+    {% endfor %}
+  </ul>
+  <div class="cz-foot"><button type="button" class="linkish" id="cz-reset">Reset to default</button><button type="button" class="btn btn-primary" id="cz-save">Done</button></div>
+</dialog>
+{% endif %}
+{% endwith %}
+{% endblock %}
+
+<div class="toasts" id="toasts" role="status" aria-live="polite">
+  {% for message in messages %}
+    <div class="toast {{ message.tags }}"><span class="toast-icon" aria-hidden="true"></span><span class="msg">{{ message }}</span><button type="button" aria-label="Dismiss" data-dismiss>{% icon "x" 16 %}</button></div>
+  {% endfor %}
+</div>
+
+<dialog class="confirm" id="confirm-dialog" aria-labelledby="confirm-title">
+  <div class="confirm-icon" aria-hidden="true">{% icon "alert" 20 %}</div>
+  <h2 id="confirm-title">Are you sure?</h2>
+  <p id="confirm-text"></p>
+  <label class="confirm-type" id="confirm-type-row" hidden>
+    <span class="small">Type <strong id="confirm-type-word"></strong> to confirm</span>
+    <input type="text" id="confirm-type" autocomplete="off" spellcheck="false">
+  </label>
+  <div class="confirm-actions">
+    <button type="button" class="btn" id="confirm-cancel">Cancel</button>
+    <button type="button" class="btn btn-danger-solid" id="confirm-ok">Confirm</button>
+  </div>
+</dialog>
+
+<template id="palette-icons">
+  <span data-i="sparkles">{% icon "sparkles" 15 %}</span><span data-i="dashboard">{% icon "dashboard" 15 %}</span>
+  <span data-i="chat">{% icon "chat" 15 %}</span><span data-i="file">{% icon "file" 15 %}</span>
+  <span data-i="bookmark">{% icon "bookmark" 15 %}</span><span data-i="history">{% icon "history" 15 %}</span>
+  <span data-i="chart">{% icon "chart" 15 %}</span><span data-i="search">{% icon "search" 15 %}</span>
+  <span data-i="inbox">{% icon "inbox" 15 %}</span><span data-i="target">{% icon "target" 15 %}</span>
+  <span data-i="code">{% icon "code" 15 %}</span><span data-i="key">{% icon "key" 15 %}</span>
+  <span data-i="users">{% icon "users" 15 %}</span><span data-i="settings">{% icon "settings" 15 %}</span>
+  <span data-i="plus">{% icon "plus" 15 %}</span><span data-i="upload">{% icon "upload" 15 %}</span>
+  <span data-i="building">{% icon "building" 15 %}</span><span data-i="shield">{% icon "shield" 15 %}</span>
+  <span data-i="gauge">{% icon "gauge" 15 %}</span><span data-i="lock">{% icon "lock" 15 %}</span>
+  <span data-i="book">{% icon "book" 15 %}</span>
+</template>
+
+<script>
+(function () {
+  const root = document.documentElement;
+  const csrf = () => document.cookie.split("; ").find(c => c.startsWith("csrftoken="))?.split("=")[1]
+    || document.querySelector("[name=csrfmiddlewaretoken]")?.value || "";
+  const store = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  const load = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+
+  // ---- Toast notifications: server messages and window.notify(text, kind) ----
+  const toasts = document.getElementById("toasts");
+  function arm(toast, i) {
+    const close = () => { toast.classList.add("leaving"); setTimeout(() => toast.remove(), 200); };
+    toast.querySelector("[data-dismiss]")?.addEventListener("click", close);
+    if (!toast.classList.contains("error")) setTimeout(close, 5000 + (i || 0) * 800);
+  }
+  toasts.querySelectorAll(".toast").forEach(arm);
+  window.notify = function (text, kind) {
+    const toast = document.createElement("div");
+    toast.className = "toast " + (kind || "success");
+    const icon = document.createElement("span"); icon.className = "toast-icon"; icon.setAttribute("aria-hidden", "true");
+    const msg = document.createElement("span"); msg.className = "msg"; msg.textContent = text;
+    const btn = document.createElement("button"); btn.type = "button"; btn.dataset.dismiss = ""; btn.setAttribute("aria-label", "Dismiss"); btn.textContent = "×";
+    toast.append(icon, msg, btn);
+    toasts.appendChild(toast);
+    arm(toast, 0);
+  };
+
+  // ---- Confirmation dialog for major actions: data-confirm on a form or its button ----
+  const dialog = document.getElementById("confirm-dialog");
+  let pending = null;
+  function ask(el, onOk) {
+    document.getElementById("confirm-title").textContent = el.dataset.confirmTitle || "Are you sure?";
+    document.getElementById("confirm-text").textContent = el.dataset.confirm;
+    const ok = document.getElementById("confirm-ok");
+    ok.textContent = el.dataset.confirmLabel || "Confirm";
+    ok.className = "btn " + (el.dataset.confirmTone === "neutral" ? "btn-primary" : "btn-danger-solid");
+    // Destructive actions can ask for a name to be typed (data-confirm-type="Exact name").
+    const word = el.dataset.confirmType || "";
+    const row = document.getElementById("confirm-type-row"), input = document.getElementById("confirm-type");
+    row.hidden = !word;
+    input.value = "";
+    document.getElementById("confirm-type-word").textContent = word;
+    ok.disabled = !!word;
+    input.oninput = () => { ok.disabled = input.value.trim() !== word; };
+    pending = onOk;
+    dialog.showModal();
+    (word ? input : ok).focus();
+  }
+  document.getElementById("confirm-cancel").addEventListener("click", () => { pending = null; dialog.close(); });
+  document.getElementById("confirm-ok").addEventListener("click", () => { const go = pending; pending = null; dialog.close(); if (go) go(); });
+  dialog.addEventListener("click", e => { if (e.target === dialog) { pending = null; dialog.close(); } });
+
+  // Every POST form: confirm when asked, then a loading state so it can't be sent twice.
+  document.addEventListener("submit", e => {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement) || (form.getAttribute("method") || "").toLowerCase() !== "post") return;
+    const button = e.submitter || form.querySelector("button[type=submit], button:not([type])");
+    const confirmer = (button && button.dataset.confirm) ? button : (form.dataset.confirm ? form : null);
+    if (confirmer && !form.dataset.confirmed) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      ask(confirmer, () => {
+        form.dataset.confirmed = "1";
+        if (confirmer.dataset.confirmType) {
+          form.appendChild(Object.assign(document.createElement("input"), { type: "hidden", name: "confirm_name", value: confirmer.dataset.confirmType }));
+        }
+        if (button && button.name) {
+          form.appendChild(Object.assign(document.createElement("input"), { type: "hidden", name: button.name, value: button.value }));
+        }
+        HTMLFormElement.prototype.submit.call(form);
+        markLoading(button);
+      });
+      return;
+    }
+    if (!e.defaultPrevented) setTimeout(() => { if (!e.defaultPrevented) markLoading(button); }, 0);
+  }, true);
+  function markLoading(button) {
+    if (!button || button.disabled || button.closest("[data-no-loading]")) return;
+    button.disabled = true;
+    button.classList.add("is-loading");
+    button.setAttribute("aria-busy", "true");
+  }
+  // Coming back via the browser's back button must not leave buttons stuck.
+  window.addEventListener("pageshow", () => document.querySelectorAll(".is-loading").forEach(b => {
+    b.disabled = false; b.classList.remove("is-loading"); b.removeAttribute("aria-busy");
+  }));
+
+  // ---- Theme ----
+  function isDark() {
+    return root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function syncThemeIcons() {
+    document.querySelectorAll(".theme-dark").forEach(el => el.hidden = isDark());
+    document.querySelectorAll(".theme-light").forEach(el => el.hidden = !isDark());
+  }
+  document.querySelectorAll("[data-theme-toggle]").forEach(btn => btn.addEventListener("click", () => {
+    root.dataset.theme = isDark() ? "light" : "dark";
+    store("theme", root.dataset.theme);
+    syncThemeIcons();
+  }));
+  syncThemeIcons();
+
+  // ---- Sidebar: icons-only on desktop, drawer on mobile; sections fold ----
+  document.querySelectorAll("[data-sidebar-toggle]").forEach(b => b.addEventListener("click", () => {
+    if (matchMedia("(max-width: 900px)").matches) {
+      document.body.classList.toggle("nav-open");
+    } else {
+      const collapsed = document.body.classList.toggle("sidebar-collapsed");
+      store("sidebar", collapsed ? "collapsed" : "open");
+    }
+  }));
+  document.querySelectorAll("[data-nav-close]").forEach(b => b.addEventListener("click", () => document.body.classList.remove("nav-open")));
+
+  let folded = [];
+  try { folded = JSON.parse(load("foldedSections") || "[]"); } catch (e) {}
+  function setFold(id, fold) {
+    const items = document.querySelector('[data-section="' + id + '"]');
+    const toggle = document.querySelector('[data-section-toggle="' + id + '"]');
+    if (!items || !toggle) return;
+    items.hidden = fold && !items.querySelector(".active");  // never hide the current page
+    toggle.setAttribute("aria-expanded", String(!items.hidden));
+  }
+  folded.forEach(id => setFold(id, true));
+  document.querySelectorAll("[data-section-toggle]").forEach(t => t.addEventListener("click", () => {
+    const id = t.dataset.sectionToggle;
+    const fold = t.getAttribute("aria-expanded") === "true";
+    folded = fold ? Array.from(new Set(folded.concat([id]))) : folded.filter(f => f !== id);
+    store("foldedSections", JSON.stringify(folded));
+    setFold(id, fold);
+  }));
+
+  document.addEventListener("click", e => {
+    document.querySelectorAll("details.menu[open]").forEach(d => { if (!d.contains(e.target)) d.open = false; });
+  });
+
+  // ---- Customize menu ----
+  const cz = document.getElementById("customize");
+  function openCustomize() {
+    if (!cz) return;
+    document.querySelectorAll("details.menu[open]").forEach(d => d.open = false);
+    cz.showModal();
+  }
+  if (cz) {
+    const list = document.getElementById("cz-list");
+    document.querySelectorAll("[data-customize-open]").forEach(b => b.addEventListener("click", e => { e.preventDefault(); openCustomize(); }));
+    cz.querySelector("[data-customize-close]").addEventListener("click", () => cz.close());
+    list.querySelectorAll(".pin-btn").forEach(btn => btn.addEventListener("click", () => {
+      const li = btn.closest("li");
+      if (!li.dataset.pinned && list.querySelectorAll("li[data-pinned='1']").length >= 5) { notify("You can pin up to 5 items.", "warning"); return; }
+      li.dataset.pinned = li.dataset.pinned ? "" : "1";
+      btn.textContent = li.dataset.pinned ? "Pinned" : "Pin";
+      btn.setAttribute("aria-pressed", String(!!li.dataset.pinned));
+    }));
+    let dragging = null;
+    list.addEventListener("dragstart", e => { dragging = e.target.closest("li"); if (dragging) dragging.classList.add("dragging"); });
+    list.addEventListener("dragend", () => { if (dragging) dragging.classList.remove("dragging"); dragging = null; });
+    list.addEventListener("dragover", e => {
+      e.preventDefault();
+      const over = e.target.closest("li");
+      if (!dragging || !over || over === dragging) return;
+      const rect = over.getBoundingClientRect();
+      list.insertBefore(dragging, e.clientY > rect.top + rect.height / 2 ? over.nextSibling : over);
+    });
+    async function save(body, message) {
+      try {
+        const res = await fetch("{% url 'tenants:menu_prefs' %}", {
+          method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() }, body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(res.status);
+        try { sessionStorage.setItem("pendingToast", message); } catch (e) {}
+        location.reload();
+      } catch (e) { notify("Couldn't save your menu. Please try again.", "error"); }
+    }
+    document.getElementById("cz-save").addEventListener("click", () => {
+      const lis = Array.from(list.querySelectorAll("li"));
+      save({
+        order: lis.map(li => li.dataset.id),
+        hidden: lis.filter(li => !li.querySelector("input").checked).map(li => li.dataset.id),
+        pinned: lis.filter(li => li.dataset.pinned).map(li => li.dataset.id),
+      }, "Menu updated.");
+    });
+    document.getElementById("cz-reset").addEventListener("click", () => save({ reset: true }, "Menu reset to default."));
+  }
+
+  // ---- Command palette (Ctrl K) ----
+  const palette = document.getElementById("palette");
+  if (palette) {
+    const q = document.getElementById("palette-q");
+    const results = document.getElementById("palette-results");
+    const icons = {};
+    document.getElementById("palette-icons").content.querySelectorAll("[data-i]").forEach(t => { icons[t.dataset.i] = t.innerHTML; });
+    let items = [], cursor = 0, timer = null, seq = 0;
+    function select(i) {
+      if (!items.length) return;
+      cursor = (i + items.length) % items.length;
+      items.forEach((el, n) => el.classList.toggle("on", n === cursor));
+      items[cursor].scrollIntoView({ block: "nearest" });
+    }
+    function render(groups) {
+      results.replaceChildren();
+      items = [];
+      groups.forEach(g => {
+        const head = document.createElement("div");
+        head.className = "palette-group"; head.textContent = g.title;
+        results.appendChild(head);
+        g.items.forEach(it => {
+          const row = document.createElement(it.url ? "a" : "button");
+          row.className = "palette-item"; row.setAttribute("role", "option");
+          if (it.url) row.href = it.url; else row.type = "button";
+          const ic = document.createElement("span"); ic.className = "pi-icon"; ic.innerHTML = icons[it.icon] || icons.file;
+          const label = document.createElement("span"); label.className = "pi-label"; label.textContent = it.label;
+          const meta = document.createElement("span"); meta.className = "pi-meta"; meta.textContent = it.meta || it.hint || "";
+          row.append(ic, label, meta);
+          if (it.action === "customize") row.addEventListener("click", () => { closePalette(); openCustomize(); });
+          row.addEventListener("mousemove", () => select(items.indexOf(row)));
+          results.appendChild(row);
+          items.push(row);
+        });
+      });
+      if (!items.length) {
+        const empty = document.createElement("p"); empty.className = "palette-empty"; empty.textContent = "No results";
+        results.appendChild(empty);
+      }
+      select(0);
+    }
+    async function search() {
+      const mine = ++seq;
+      try {
+        const res = await fetch(palette.dataset.searchUrl + "?q=" + encodeURIComponent(q.value.trim()), { headers: { Accept: "application/json" } });
+        const data = await res.json();
+        if (mine === seq) render(data.groups || []);
+      } catch (e) {
+        if (mine === seq) { results.replaceChildren(); notify("Search is unavailable right now.", "error"); }
+      }
+    }
+    function openPalette() { palette.hidden = false; q.value = ""; search(); setTimeout(() => q.focus(), 0); }
+    function closePalette() { palette.hidden = true; }
+    q.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(search, 160); });
+    q.addEventListener("keydown", e => {
+      if (e.key === "ArrowDown") { e.preventDefault(); select(cursor + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); select(cursor - 1); }
+      else if (e.key === "Enter" && items[cursor]) { e.preventDefault(); items[cursor].click(); }
+    });
+    palette.addEventListener("click", e => { if (e.target === palette) closePalette(); });
+    document.querySelectorAll("[data-palette-open]").forEach(b => b.addEventListener("click", openPalette));
+    document.addEventListener("keydown", e => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); palette.hidden ? openPalette() : closePalette(); }
+      else if (e.key === "Escape" && !palette.hidden) closePalette();
+    });
+  }
+
+  try {
+    const pendingToast = sessionStorage.getItem("pendingToast");
+    if (pendingToast) { sessionStorage.removeItem("pendingToast"); notify(pendingToast, "success"); }
+  } catch (e) {}
+})();
+</script>
+<script>{% include "partials/datatable.js" %}</script>
+{% block script %}{% endblock %}
+</body>
+</html>

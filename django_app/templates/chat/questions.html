@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% load humanize ui %}
+{% block title %}Questions · {{ organization.name }}{% endblock %}
+{% block crumb %}Questions{% endblock %}
+{% block style %}{% include "partials/question_styles.css" %}
+.filters { display: grid; gap: 10px; grid-template-columns: repeat(6, minmax(0, 1fr)) auto; align-items: end; }
+.filters label { display: block; font-size: .75rem; font-weight: 600; color: var(--text-2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
+.filters select, .filters input { padding: 8px 10px; font-size: .9rem; }
+@media (max-width: 1100px) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.outcomes { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0; }
+.outcomes a { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-weight: 500; font-size: .9rem; background: var(--surface); }
+.outcomes a:hover { text-decoration: none; border-color: var(--border-strong); }
+.outcomes a.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.outcomes .n { font-variant-numeric: tabular-nums; color: var(--text-2); font-size: .82rem; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.answered { background: var(--good); } .dot.weak { background: var(--warn); } .dot.failed, .dot.disliked { background: var(--bad); } .dot.all { background: var(--text); }
+.breakdowns { display: grid; gap: 18px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 18px; }
+@media (max-width: 1100px) { .breakdowns { grid-template-columns: minmax(0, 1fr); } }
+.breakdowns .card { margin: 0; }
+.hbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; margin-bottom: 10px; font-size: .88rem; }
+.hbar a { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar .num { color: var(--text-2); font-variant-numeric: tabular-nums; font-size: .82rem; }
+.hbar .track { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: var(--surface-3); }
+.hbar .fill { height: 100%; border-radius: 999px; background: var(--accent); }
+.src-table td, .src-table th { padding: 10px 14px; white-space: nowrap; }
+.pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; }
+.topic-list { list-style: none; margin: 0 0 16px; padding: 0; }
+.topic-list li { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.topic-list li:last-child { border-bottom: 0; }
+.topic-list .d { flex: 1; min-width: 0; }
+.topic-list .d span { display: block; color: var(--text-3); font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Questions</h1>
+    <p>Every question asked in {{ organization.name }}: where it came from, what it was about, and whether it was answered.</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="?{{ page_qs }}&format=csv">{% icon "file" 16 %} Download CSV</a>
+  </div>
+</div>
+
+<form class="card filters" method="get">
+  <div><label for="f-period">Period</label>
+    <select id="f-period" name="period">
+      <option value="7" {% if period == '7' %}selected{% endif %}>Last 7 days</option>
+      <option value="30" {% if period == '30' %}selected{% endif %}>Last 30 days</option>
+      <option value="90" {% if period == '90' %}selected{% endif %}>Last 90 days</option>
+      <option value="all" {% if period == 'all' %}selected{% endif %}>All time</option>
+    </select></div>
+  <div><label for="f-source">Source</label>
+    <select id="f-source" name="source">
+      <option value="">All sources</option>
+      <option value="web" {% if filters.source == 'web' %}selected{% endif %}>Web app</option>
+      <option value="api" {% if filters.source == 'api' %}selected{% endif %}>API (live)</option>
+      <option value="test" {% if filters.source == 'test' %}selected{% endif %}>Test (playground)</option>
+    </select></div>
+  <div><label for="f-key">API key</label>
+    <select id="f-key" name="key">
+      <option value="">Any key</option>
+      {% for k in keys %}<option value="{{ k.pk }}" {% if filters.key == k.pk|stringformat:"d" %}selected{% endif %}>{{ k.name }}{% if not k.is_active %} (revoked){% endif %}</option>{% endfor %}
+    </select></div>
+  <div><label for="f-topic">Topic</label>
+    <select id="f-topic" name="topic">
+      <option value="">Any topic</option>
+      {% for t in topics %}<option value="{{ t.pk }}" {% if filters.topic == t.pk|stringformat:"d" %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
+      <option value="none" {% if filters.topic == 'none' %}selected{% endif %}>Other (no topic)</option>
+    </select></div>
+  <div><label for="f-intent">Type</label>
+    <select id="f-intent" name="intent">
+      <option value="">Any type</option>
+      {% for value, label in intents %}<option value="{{ value }}" {% if filters.intent == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></div>
+  <div><label for="f-q">Search</label><input id="f-q" type="text" name="q" value="{{ filters.q }}" placeholder="Words in the question"></div>
+  <div class="actions" style="flex-wrap:nowrap">
+    {% if filters.user %}<input type="hidden" name="user" value="{{ filters.user }}">{% endif %}
+    <a class="btn btn-ghost" href="{% url 'chat:questions' %}">Reset</a>
+    <button class="btn btn-primary" type="submit">Apply</button>
+  </div>
+</form>
+{% if filters.user %}<p class="small muted">Showing questions from web user <strong>{{ filters.user }}</strong>. <a href="?{{ clear_user_qs }}">Clear</a></p>{% endif %}
+
+<nav class="outcomes" aria-label="Outcome">
+  <a href="?{{ filter_qs }}" class="{% if not outcome %}on{% endif %}"><span class="dot all"></span> All <span class="n">{{ all_total }}</span></a>
+  {% for o in outcomes %}
+    <a href="?{{ filter_qs }}&outcome={{ o.key }}" class="{% if outcome == o.key %}on{% endif %}"><span class="dot {{ o.key }}"></span> {{ o.label }} <span class="n">{{ o.count }}</span></a>
+  {% endfor %}
+  <span class="small faint" style="align-self:center;margin-left:auto">{{ answered_pct }}% answered</span>
+</nav>
+
+<div class="breakdowns">
+  <div class="card">
+    <h2>By topic</h2>
+    {% for b in by_topic %}
+      <div class="hbar"><span>{{ b.label }}</span><span class="num">{{ b.count }} · {{ b.pct }}%</span><span class="track"><span class="fill" style="display:block;width:{{ b.width }}%"></span></span></div>
+    {% empty %}<p class="small muted">No topic data. <a href="#topics">Add topics</a> to sort questions by subject.</p>{% endfor %}
+  </div>
+  <div class="card">
+    <h2>By type</h2>
+    {% for b in by_intent %}
+      <div class="hbar"><a href="?{{ filter_qs }}&intent={{ b.key }}">{{ b.label }}</a><span class="num">{{ b.count }} · {{ b.pct }}%</span><span class="track"><span class="fill" style="display:block;width:{{ b.width }}%"></span></span></div>
+    {% empty %}<p class="small muted">No questions.</p>{% endfor %}
+  </div>
+  <div class="card">
+    <h2>By source</h2>
+    {% for b in by_source %}
+      <div class="hbar"><a href="?{{ filter_qs }}&source={{ b.key }}"><span class="src {{ b.key }}" style="padding:1px 7px">{{ b.label }}</span></a><span class="num">{{ b.count }} · {{ b.pct }}%</span><span class="track"><span class="fill" style="display:block;width:{{ b.width }}%"></span></span></div>
+    {% empty %}<p class="small muted">No questions.</p>{% endfor %}
+  </div>
+</div>
+
+<div class="card flush" style="margin-bottom:18px">
+  <div class="card-head" style="padding:18px 20px 0"><h2 style="margin:0">By API key and person</h2><span class="small faint">{% if period == 'all' %}all time{% else %}last {{ period }} days{% endif %}</span></div>
+  <div class="table-wrap" style="margin-top:12px">
+    <table class="src-table" data-table data-label="sources">
+      <thead><tr><th>Source</th><th class="num">Live</th><th class="num">Test</th><th class="num">Answered</th><th class="num">Weak</th><th class="num">Failed</th><th class="num">Avg time</th><th>Top topic</th><th>Last question</th><th></th></tr></thead>
+      <tbody>
+        {% for s in source_table %}
+          <tr>
+            <td>
+              {% if s.kind == 'api' %}<span class="src api">{% icon "key" 13 %} API <em>{{ s.name }}</em></span>
+                {% if s.key and not s.key.is_active %}<span class="badge bad plain" style="margin-left:6px">Revoked</span>{% endif %}
+                {% if s.key %}<div class="small faint mono" style="margin-top:4px">{{ s.key.prefix }}… · last used {{ s.key.last_used_at|naturaltime|default:"never" }}</div>{% endif %}
+              {% else %}<span class="src web">{% icon "user" 13 %} Web <em>{{ s.name }}</em></span>{% endif %}
+            </td>
+            <td class="num">{{ s.questions }}</td>
+            <td class="num">{% if s.tests %}<span class="src test" style="padding:1px 7px">{{ s.tests }}</span>{% else %}0{% endif %}</td>
+            <td class="num">{% if s.total %}{{ s.answered_pct }}%{% else %}–{% endif %}</td>
+            <td class="num">{{ s.weak }}</td>
+            <td class="num">{% if s.failed %}<strong style="color:var(--bad)">{{ s.failed }}</strong>{% else %}0{% endif %}</td>
+            <td class="num">{% if s.avg_s %}{{ s.avg_s|floatformat:1 }} s{% else %}–{% endif %}</td>
+            <td>{{ s.top_topic|default:"–" }}</td>
+            <td class="small muted">{{ s.last|naturaltime|default:"–" }}</td>
+            <td>{% if s.total %}
+              {% if s.kind == 'api' and s.key %}<a class="btn btn-sm btn-ghost" href="?period={{ period }}&key={{ s.key.pk }}">View {% icon "chevron-right" 14 %}</a>
+              {% elif s.kind == 'web' %}<a class="btn btn-sm btn-ghost" href="?period={{ period }}&source=web&user={{ s.name|urlencode }}">View {% icon "chevron-right" 14 %}</a>{% endif %}
+            {% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="10" class="muted">No API keys or questions yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card-head"><h2 style="margin:0">{{ total }} question{{ total|pluralize }}</h2><span class="small faint">Click a row for the full question, answer and sources</span></div>
+{% if rows %}
+  <div class="qlist">
+    {% for r in rows %}{% include "chat/_question_row.html" %}{% endfor %}
+  </div>
+  <div class="dt-foot" style="padding-left:0;padding-right:0;border-top:0">
+    <span class="dt-info">Showing {{ page.start_index }}–{{ page.end_index }} of {{ total }}</span>
+    {% if page.has_other_pages %}
+    <nav class="dt-pager" aria-label="Question pages">
+      {% if page.has_previous %}<a class="dt-page" href="?{{ page_qs }}&page={{ page.previous_page_number }}" aria-label="Previous page">‹</a>{% else %}<button class="dt-page" type="button" disabled aria-label="Previous page">‹</button>{% endif %}
+      {% for n in page_numbers %}
+        {% if n == ellipsis %}<span class="dt-gap">…</span>
+        {% elif n == page.number %}<span class="dt-page on" aria-current="page">{{ n }}</span>
+        {% else %}<a class="dt-page" href="?{{ page_qs }}&page={{ n }}">{{ n }}</a>{% endif %}
+      {% endfor %}
+      {% if page.has_next %}<a class="dt-page" href="?{{ page_qs }}&page={{ page.next_page_number }}" aria-label="Next page">›</a>{% else %}<button class="dt-page" type="button" disabled aria-label="Next page">›</button>{% endif %}
+    </nav>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="card"><div class="empty-state"><div class="stat-icon">{% icon "search" 22 %}</div><h3>No questions match</h3><p>Try a longer period or clear some filters.</p></div></div>
+{% endif %}
+
+<div class="card" id="topics" style="margin-top:22px">
+  <div class="card-head">
+    <h2 style="margin:0">Topics</h2>
+    <form method="post" action="{% url 'chat:topic_resort' %}" class="inline">{% csrf_token %}<button class="btn btn-sm">{% icon "refresh" 15 %} Re-sort all questions</button></form>
+  </div>
+  <p class="small muted">Topics are the subjects your questions get sorted into. The local AI model matches each new question to the closest topic by meaning, so no Gemini quota is used. Describe each topic with the words people actually use.</p>
+  {% if topics %}
+    <ul class="topic-list">
+      {% for t, count in topic_rows %}
+        <li>
+          <span class="kpi-icon" style="width:32px;height:32px">{% icon "target" 15 %}</span>
+          <span class="d"><strong>{{ t.name }}</strong><span>{{ t.description|default:"No description" }}</span></span>
+          <a class="small" href="?period={{ period }}&topic={{ t.pk }}">{{ count }} question{{ count|pluralize }}</a>
+          <form method="post" action="{% url 'chat:topic_delete' t.pk %}" class="inline" data-confirm="Remove the topic {{ t.name }}? Its questions will be re-sorted.">{% csrf_token %}
+            <button class="btn btn-sm btn-ghost btn-danger btn-icon" title="Remove">{% icon "trash" 15 %}<span class="sr-only">Remove</span></button></form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No topics yet. Add a few below.</p>
+  {% endif %}
+  <form method="post" action="{% url 'chat:topic_add' %}" class="form" style="display:grid;gap:10px;grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto;align-items:end">
+    {% csrf_token %}
+    <div style="margin:0"><label for="t-name">New topic</label><input id="t-name" type="text" name="name" maxlength="60" placeholder="e.g. Funding & investors" required></div>
+    <div style="margin:0"><label for="t-desc">Words people use</label><input id="t-desc" type="text" name="description" maxlength="300" placeholder="grants, money, investors, demo day, loans"></div>
+    <button class="btn btn-primary" type="submit">{% icon "plus" 16 %} Add</button>
+  </form>
+</div>
+{% endblock %}

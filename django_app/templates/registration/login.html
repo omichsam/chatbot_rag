@@ -1,0 +1,31 @@
+{% extends "auth_base.html" %}
+{% load ui %}
+{% block title %}Sign in · DocAssist{% endblock %}
+{% block auth %}
+<h1>Sign in to DocAssist</h1>
+<p class="lead">Ask your organization's documents anything.</p>
+<form method="post" class="form">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<ul class="errorlist nonfield">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  <div>
+    <label for="id_username">Username*</label>
+    <input type="text" name="username" id="id_username" autocomplete="username" placeholder="Enter your username" autofocus required value="{{ form.username.value|default:'' }}">
+  </div>
+  <div>
+    <label for="id_password">Password*</label>
+    <div class="pw-wrap">
+      <input type="password" name="password" id="id_password" autocomplete="current-password" placeholder="Enter your password" required>
+      <button type="button" class="pw-toggle" data-pw-toggle aria-label="Show password"><span class="pw-show">{% icon "eye" 18 %}</span><span class="pw-hide" hidden>{% icon "eye-off" 18 %}</span></button>
+    </div>
+  </div>
+  <div class="field-row">
+    <label class="check"><input type="checkbox" name="remember" value="1" checked> Remember me</label>
+    <span class="faint small" title="Ask an owner or admin of your organization to reset it.">Forgot password? Ask your admin</span>
+  </div>
+  <input type="hidden" name="next" value="{{ next }}">
+  <button class="btn btn-primary btn-block" type="submit" style="padding:11px 16px">Sign in to DocAssist</button>
+</form>
+{% if allow_signup %}
+  <p class="auth-alt">New on our platform? <a href="{% url 'signup' %}">Create an account</a></p>
+{% endif %}
+{% endblock %}
