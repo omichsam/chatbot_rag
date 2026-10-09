@@ -1,0 +1,19 @@
+# Versions verified together on Python 3.10 (2026-10).
+Django>=5.2,<5.3
+python-dotenv==1.1.1
+pypdf==6.0.0
+langchain-text-splitters==0.3.11
+chromadb==1.3.7
+sentence-transformers==5.1.0
+google-generativeai==0.8.5
+
+# Vectors inside PostgreSQL (RAG_VECTOR_BACKEND=pgvector) and static files without a web server
+pgvector>=0.4
+whitenoise>=6.7
+
+# Production only
+gunicorn>=23; sys_platform != "win32"
+# Needed when POSTGRES_DB is set
+psycopg[binary]>=3.2
+# Encrypts the AI provider API keys superadmins enter in the portal
+cryptography>=43

@@ -1,0 +1,43 @@
+# DocAssist with PostgreSQL + pgvector.
+#   1. Copy .env.docker.example to .env.docker and fill it in.
+#   2. docker compose up -d --build      → http://localhost:8001
+#   3. docker compose logs -f web         (first start runs migrations)
+# Data lives in the named volumes below and survives restarts and rebuilds.
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    env_file: .env.docker
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    build: .
+    env_file: .env.docker
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      RAG_VECTOR_BACKEND: pgvector
+    ports:
+      - "8001:8000"   # host port 8001 → gunicorn inside the container
+    volumes:
+      - appdata:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  appdata:

@@ -1,0 +1,13 @@
+# Keep secrets, local data and caches out of the image.
+.env
+.env.*
+!.env.docker.example
+db.sqlite3
+media/
+vector_store/
+staticfiles/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.vscode/
+.idea/
