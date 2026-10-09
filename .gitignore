@@ -1,16 +1,40 @@
-# Ignore virtual environments
-venv/
+# --- Secrets: never commit ---------------------------------------------------
+.env
+.env.*
+!.env.example
+!**/.env.example
+!**/.env.docker.example
 
-# Ignore Python bytecode files
-__pycache__
+# --- Private data: documents, databases, search indexes ------------------------
+# Uploaded documents belong to organizations; databases hold users and chats.
+db.sqlite3
+*.sqlite3
+django_app/media/
+django_app/vector_store/
+django_app/staticfiles/
+uploaded_files/
+chroma_db/
+# Legacy Streamlit stores: users (password hashes), API keys, analytics
+users.json
+api_keys.json
+analytics.json
+
+# --- Python ----------------------------------------------------------------------
+venv/
+.venv/
+__pycache__/
 *.pyc
 *.pyo
+*.pyd
+.pytest_cache/
 
-# Ignore IDE files (e.g., VSCode)
+# --- Editors, OS, logs --------------------------------------------------------------
 .vscode/
-
-# Ignore environment files (optional, for security)
-.env
-
-# Ignore logs and other temp files
+.idea/
+.DS_Store
+Thumbs.db
 *.log
+.php-preview-router.php
+
+# --- Not part of this project ---------------------------------------------------
+INDEXXX.HTML
