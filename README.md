@@ -1,64 +1,50 @@
-<div align="center">
-<img src="https://capsule-render.vercel.app/api?type=waving&color=00ff9f&height=150&section=header&text=RAG%20AI%20Chatbot&fontSize=36&fontColor=0d1117&fontAlignY=40&desc=Retrieval-Augmented%20Generation%20Enterprise%20Chatbot&descAlignY=60&descColor=0d1117" width="100%"/>
+# DocAssist — Document Q&A Assistant
 
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![RAG](https://img.shields.io/badge/RAG_Architecture-FF6B6B?style=for-the-badge&logoColor=white)
-![REST API](https://img.shields.io/badge/REST_API-FF6C37?style=for-the-badge&logo=postman&logoColor=white)
-![NLP](https://img.shields.io/badge/NLP-8B5CF6?style=for-the-badge&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Production-00ff9f?style=for-the-badge)
-</div>
+DocAssist answers questions from an organization's own documents and shows the file and page each answer came from. It finds the relevant passages itself (with a local embedding model and vector search), then has an AI model reword them into a reply. If every AI provider fails, it quotes the best-matching sentences instead, so people always get a sourced answer.
 
-## Overview
-An AI-powered enterprise chatbot built using **Retrieval-Augmented Generation (RAG)** architecture, developed during my tenure at **ICT Authority's Innovation Department**. The chatbot reduced IT support requests by **30%** and manual incident handling workflows by **25%**.
+The current platform is the multi-tenant Django app in [`django_app/`](django_app/): organizations, roles, a superadmin portal, any AI provider (Gemini, OpenAI, Claude, Groq, DeepSeek, OpenRouter, Ollama), PostgreSQL with pgvector, and Docker.
 
-## Features
-- **RAG Architecture** — retrieves relevant knowledge before generating responses for accurate, context-aware answers
-- **REST API backend** — enables easy management, monitoring, and analytics integration
-- **NLP processing** — natural language understanding for human-like conversation flow
-- **Frontend integration** — fully integrated into a user-facing web interface
-- **Analytics dashboard** — tracks usage patterns and support deflection metrics
+## Quick start
 
-## Architecture
-```
-User Input → NLP Preprocessing → Vector Search (RAG) → LLM Generation → Response
-                                       ↑
-                               Knowledge Base / Docs
-```
+**Docker (recommended)**, PostgreSQL 16 + pgvector included:
 
-## Tech Stack
-| Layer | Technology |
-|---|---|
-| Language | Python |
-| AI Architecture | RAG (Retrieval-Augmented Generation) |
-| Backend | REST API |
-| NLP | Natural Language Processing |
-| Testing | QA — Unit, API & Integration Tests |
-| Docs | User Manual & Maintenance Guide |
-
-## Impact
-```
-✅ 30% reduction in IT support requests
-✅ 25% reduction in manual workflow intervention
-✅ End-to-end QA validated (backend → API → frontend)
-✅ Full user manual & business continuity documentation
-```
-
-## Quality Assurance
-Performed end-to-end QA across:
-- Backend logic validation
-- REST API endpoint testing (Postman)
-- Frontend integration testing
-- User acceptance testing (UAT)
-
-## Setup
 ```bash
-git clone https://github.com/omichsam/chatbot_rag.git
-cd chatbot_rag
-pip install -r requirements.txt
-python app.py
+cd django_app
+cp .env.docker.example .env.docker      # set DJANGO_SECRET_KEY, POSTGRES_PASSWORD, GOOGLE_API_KEY
+docker compose up -d --build            # → http://localhost:8001
+docker compose exec web python manage.py createsuperuser
 ```
 
----
-<div align="center">
-Built at <strong>ICT Authority — Innovation Department</strong> | <a href="https://omichsam.github.io">Portfolio</a> · <a href="https://www.linkedin.com/in/michira-samson">LinkedIn</a>
-</div>
+**Local development:**
+
+```powershell
+venv\Scripts\activate
+cd django_app
+python manage.py migrate
+python manage.py runserver 127.0.0.1:8123   # → http://127.0.0.1:8123
+```
+
+## Documentation
+
+Everything is in [`docs/`](docs/README.md), organized by reader:
+
+- **Using it:** [User guide](docs/USER_GUIDE.md) · [Admin guide](docs/ADMIN_GUIDE.md) · [Superadmin guide](docs/SUPERADMIN_GUIDE.md) · [AI providers](docs/AI_PROVIDERS.md)
+- **Running it:** [Deployment](docs/DEPLOYMENT.md) · [Configuration](docs/CONFIGURATION.md) · [Developer setup](docs/SETUP_AND_OPERATIONS.md)
+- **Understanding it:** [Architecture](docs/ARCHITECTURE.md) · [Platform reference](docs/DJANGO_PLATFORM.md) · [Diagrams](docs/PROCESS_DIAGRAMS.md) · [Decisions](docs/DECISIONS.md) · [API](docs/API_REFERENCE.md)
+- **Tracking it:** [Changelog](docs/CHANGELOG.md) · [Known issues and roadmap](docs/KNOWN_ISSUES.md) · [Contributing and releases](CONTRIBUTING.md)
+
+**Version:** see [`django_app/VERSION`](django_app/VERSION) and the git tags (`vX.Y.Z`). Maintained by **omichsam**.
+
+## What's in this folder
+
+| Path | What it is |
+| --- | --- |
+| `django_app/` | **The platform.** Django project, Dockerfile, docker-compose.yml, tests (`python manage.py test`) |
+| `docs/` | Documentation and diagrams |
+| `venv/` | Python 3.10 virtual environment for local development |
+| `.env` | `GOOGLE_API_KEY` for local runs. Secret; never share or commit it. |
+| `shit.py`, `shit_api.py`, `static/` | *Legacy* v2: the original Streamlit app and its public API. See [docs/STREAMLIT_APP.md](docs/STREAMLIT_APP.md). Their Gemini model is retired, so chat returns errors. |
+| `api.py`, `main.py` | *Legacy* v1: FastAPI backend and Streamlit UI, no login |
+| `uploaded_files/`, `chroma_db/`, `users.json`, `api_keys.json`, `analytics.json` | *Legacy* data, already imported into the platform (organization "ICTA") |
+| `requirements.txt`, `Dockerfile`, `docker-compose.yml` | *Legacy* dependency pins and Docker setup for the Streamlit/FastAPI apps; the platform uses the ones in `django_app/` |
+| `INDEXXX.HTML`, `static/index copy.html` | Unrelated or unused leftovers |
