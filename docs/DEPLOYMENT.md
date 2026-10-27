@@ -8,6 +8,8 @@ browser / API client ──▶ web :8000 ──▶ db :5432 (PostgreSQL 16 + pgv
                            └──▶ AI providers over HTTPS (Gemini, OpenAI, Claude, …)
 ```
 
+To set up a Linux test server with one script and ready-made test accounts, see [SERVER_SETUP.md](SERVER_SETUP.md).
+
 ## Requirements
 
 - Docker Desktop (Windows/macOS) or Docker Engine with the Compose plugin (Linux).

@@ -2,6 +2,15 @@
 
 All notable changes to DocAssist, newest first. The project uses [semantic versioning](https://semver.org/): **MAJOR** for a new generation or breaking change, **MINOR** for new features, **PATCH** for fixes. The current version is in [`django_app/VERSION`](../django_app/VERSION); each release is a git tag `vX.Y.Z`. How to record a change and cut a release: [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+## [Unreleased]
+
+### Added
+
+- `deploy/server-setup.sh`: one-script setup on an Ubuntu/Debian server (installs Docker, clones the repo, writes `.env.docker` with random secrets, starts the containers, creates test accounts).
+- `seed_test_users` management command: one test account per role (superadmin, support, finance, owner, admin, member) in a Test Organization. Safe to re-run.
+- [SERVER_SETUP.md](SERVER_SETUP.md): server setup guide with the test credentials, for controlled test environments.
+- `.gitattributes` keeps shell scripts on LF line endings.
+
 ## [3.4.1] - 2026-10-07
 
 ### Added

@@ -57,6 +57,7 @@ Open <http://127.0.0.1:8123>. Port 8123 is used because 8000 belongs to another 
 | `setup_pgvector` | Creates the `vector` extension and the passage table if missing (Docker runs it on every start) |
 | `import_legacy --org-name NAME [--source DIR] [--skip-documents]` | Imports the Streamlit app's users, API keys and documents into an organization |
 | `purge_organizations` | Deletes organizations whose 30-day scheduled-deletion period has ended (run daily from cron in production) |
+| `seed_test_users [--password P]` | Creates or resets one test account per role and a Test Organization (test environments only; see [SERVER_SETUP.md](SERVER_SETUP.md)) |
 | `reset_2fa USERNAME` | Removes someone's authenticator app so they can sign in with a password and set it up again |
 | `changepassword USERNAME`, `createsuperuser` | Django's standard account commands |
 

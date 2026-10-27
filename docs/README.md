@@ -9,7 +9,7 @@ DocAssist answers questions from an organization's own documents. Each answer sh
 | Someone who asks questions | [User guide](USER_GUIDE.md) |
 | An organization owner or admin | [Admin guide](ADMIN_GUIDE.md) |
 | A superadmin running the platform | [Superadmin guide](SUPERADMIN_GUIDE.md) and [AI providers](AI_PROVIDERS.md) |
-| Deploying or operating it | [Deployment (Docker + pgvector)](DEPLOYMENT.md) and [Configuration](CONFIGURATION.md) |
+| Deploying or operating it | [Server setup with test accounts](SERVER_SETUP.md), [Deployment (Docker + pgvector)](DEPLOYMENT.md) and [Configuration](CONFIGURATION.md) |
 | A developer | [Developer setup](SETUP_AND_OPERATIONS.md), [Architecture](ARCHITECTURE.md), [Platform reference](DJANGO_PLATFORM.md), [Decisions](DECISIONS.md) |
 | Integrating another system | [API reference](API_REFERENCE.md) |
 | Looking for the big picture with diagrams | [Processes and diagrams](PROCESS_DIAGRAMS.md) |
@@ -23,6 +23,7 @@ DocAssist answers questions from an organization's own documents. Each answer sh
 | [SUPERADMIN_GUIDE.md](SUPERADMIN_GUIDE.md) | The platform portal: organizations, users, platform settings, AI providers, maintenance, audit | Platform | 2026-10-05 |
 | [AI_PROVIDERS.md](AI_PROVIDERS.md) | Gemini, OpenAI, Claude, Groq, DeepSeek, OpenRouter, Ollama; the fallback chain | Platform | 2026-10-05 |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Docker, PostgreSQL + pgvector, backups, upgrades, moving data | Platform | 2026-10-05 |
+| [SERVER_SETUP.md](SERVER_SETUP.md) | One-script setup on an Ubuntu/Debian server, with test accounts for every role | Platform | 2026-10-28 |
 | [CONFIGURATION.md](CONFIGURATION.md) | Every setting: `.env`, platform settings, organization settings | Platform | 2026-10-05 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Components, request flow, storage, how answers are produced | Platform | 2026-10-05 |
 | [DJANGO_PLATFORM.md](DJANGO_PLATFORM.md) | Pages, roles, data model, tenant isolation, code layout | Platform | 2026-10-05 |

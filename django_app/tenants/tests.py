@@ -228,3 +228,24 @@ class MemberVisibilityTests(RagTestMixin, TestCase):
         self.assertNotContains(page, "Avg. answer time")
         self.assertNotContains(page, "AI usage today")
         self.assertIsNone(page.context["ai_status"])
+
+
+class SeedTestUsersTests(TestCase):
+    def test_creates_every_role_and_is_safe_to_rerun(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+        from portal.models import PlatformStaff
+
+        call_command("seed_test_users", stdout=StringIO())
+        User.objects.filter(username="member").update(is_active=False)
+        call_command("seed_test_users", password="Other-pass-123", stdout=StringIO())
+
+        self.assertTrue(User.objects.get(username="superadmin").is_superuser)
+        self.assertEqual(PlatformStaff.objects.get(user__username="support").role, PlatformStaff.Role.SUPPORT)
+        org = Organization.objects.get(name="Test Organization")
+        self.assertEqual(org.memberships.get(user__username="owner").role, Membership.Role.OWNER)
+        self.assertEqual(org.memberships.count(), 3)
+        member = User.objects.get(username="member")
+        self.assertTrue(member.is_active)
+        self.assertTrue(member.check_password("Other-pass-123"))
